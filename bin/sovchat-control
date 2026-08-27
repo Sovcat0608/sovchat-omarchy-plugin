@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+
+set -u
+
+readonly APP_ID="com.sovchat.desktop"
+readonly APP_NAME="SovChat"
+readonly PROCESS_NAME="SovChatDesktop"
+readonly UPDATE_BASE_URL="https://sovchat.com/desktop-updates/linux"
+readonly INSTALL_DIR="${HOME}/.local/opt/sovchat"
+readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat.AppImage"
+readonly VERSION_FILE="${INSTALL_DIR}/VERSION"
+readonly SCRIPT_SOURCE="${BASH_SOURCE[0]-$0}"
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${SCRIPT_SOURCE}")" && pwd)"
+readonly PLUGIN_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+
+sanitize_field() {
+  local value="${1:-}"
+  value="${value//$'\t'/ }"
+  value="${value//$'\r'/ }"
+  value="${value//$'\n'/ }"
+  printf '%s' "${value}"
+}
+
+expand_home() {
+  local value="${1:-}"
+  if [[ "${value}" == "~/"* ]]; then
+    printf '%s\n' "${HOME}/${value:2}"
+  else
+    printf '%s\n' "${value}"
+  fi
+}
+
+usable_launcher() {
+  [[ -n "${1:-}" && -f "${1}" && -x "${1}" ]]
+}
+
+find_launcher() {
+  local override="${1:-}"
+  local candidate=""
+
+  if [[ -n "${override}" ]]; then
+    candidate="$(expand_home "${override}")"
+    if usable_launcher "${candidate}"; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+
+  local known_candidates=(
+    "${INSTALL_TARGET}"
+    "${HOME}/.local/bin/SovChatDesktop"
+    "${HOME}/.local/bin/sovchat"
+    "${HOME}/.local/share/SovChat/SovChatDesktop"
+    "${HOME}/.local/share/sovchat/SovChatDesktop"
+    "/opt/SovChat/SovChatDesktop"
+    "/opt/sovchat/SovChatDesktop"
+  )
+
+  for candidate in "${known_candidates[@]}"; do
+    if usable_launcher "${candidate}"; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  candidate="$(type -P SovChatDesktop 2>/dev/null || true)"
+  if usable_launcher "${candidate}"; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  candidate="$(type -P sovchat 2>/dev/null || true)"
+  if usable_launcher "${candidate}"; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  shopt -s nullglob
+  local discovered=(
+    "${HOME}"/Applications/SovChat-*.AppImage
+    "${HOME}"/Applications/SovChat*.AppImage
+    "${HOME}"/Applications/sovchat-*/SovChatDesktop
+    "${HOME}"/Downloads/SovChat-*.AppImage
+    "${HOME}"/Downloads/sovchat-*/SovChatDesktop
+  )
+  shopt -u nullglob
+
+  if ((${#discovered[@]} > 0)); then
+    while IFS= read -r candidate; do
+      if usable_launcher "${candidate}"; then
+        printf '%s\n' "${candidate}"
+        return 0
+      fi
+    done < <(printf '%s\n' "${discovered[@]}" | sort -Vr)
+  fi
+
+  return 1
+}
+
+client_running() {
+  if command -v pgrep >/dev/null 2>&1; then
+    pgrep -x "${PROCESS_NAME}" >/dev/null 2>&1 && return 0
+    pgrep -f '(^|/)(SovChatDesktop|SovChat-[^/[:space:]]*\.AppImage)([[:space:]]|$)' >/dev/null 2>&1 && return 0
+  fi
+
+  ps -eo comm= 2>/dev/null | awk -v name="${PROCESS_NAME}" '$1 == name { found = 1 } END { exit(found ? 0 : 1) }'
+}
+
+detect_version() {
+  local launcher="${1:-}"
+  local candidate=""
+
+  if [[ "${launcher}" == "${INSTALL_TARGET}" && -r "${VERSION_FILE}" ]]; then
+    candidate="$(head -n 1 "${VERSION_FILE}" 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${candidate}" ]]; then
+    local base="$(basename -- "${launcher}")"
+    local parent="$(basename -- "$(dirname -- "${launcher}")")"
+    if [[ "${base}" =~ SovChat-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)-x86_64\.AppImage$ ]]; then
+      candidate="${BASH_REMATCH[1]}"
+    elif [[ "${parent}" =~ ^sovchat-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)$ ]]; then
+      candidate="${BASH_REMATCH[1]}"
+    fi
+  fi
+
+  sanitize_field "${candidate}"
+}
+
+print_status() {
+  local override="${1:-}"
+  local launcher=""
+  local installed=0
+  local running=0
+  local version=""
+
+  if launcher="$(find_launcher "${override}")"; then
+    installed=1
+    version="$(detect_version "${launcher}")"
+  fi
+  if client_running; then
+    running=1
+  fi
+
+  printf '%s\t%s\t%s\t%s\n' \
+    "${installed}" \
+    "${running}" \
+    "$(sanitize_field "${version}")" \
+    "$(sanitize_field "${launcher}")"
+}
+
+focus_running_client() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  local address=""
+  address="$(hyprctl clients -j 2>/dev/null | jq -r '
+    [ .[]
+      | select(
+          [(.class // ""), (.initialClass // "")]
+          | map(ascii_downcase)
+          | any(. == "sovchat" or . == "sovchatdesktop" or . == "com.sovchat.desktop")
+        )
+    ][0].address // empty
+  ' 2>/dev/null || true)"
+
+  [[ -n "${address}" ]] || return 1
+  hyprctl dispatch focuswindow "address:${address}" >/dev/null 2>&1
+}
+
+launch_client() {
+  local override="${1:-}"
+  local launcher=""
+
+  if client_running && focus_running_client; then
+    return 0
+  fi
+
+  if ! launcher="$(find_launcher "${override}")"; then
+    printf 'SovChat client not found. Install it from the plugin panel or configure an absolute executable path.\n' >&2
+    return 3
+  fi
+
+  if command -v uwsm-app >/dev/null 2>&1; then
+    setsid -f uwsm-app -- "${launcher}" >/dev/null 2>&1 < /dev/null
+  else
+    setsid -f "${launcher}" >/dev/null 2>&1 < /dev/null
+  fi
+}
+
+yaml_scalar() {
+  local key="${1}"
+  local source="${2}"
+  printf '%s\n' "${source}" \
+    | sed -n "s/^${key}:[[:space:]]*//p" \
+    | head -n 1 \
+    | sed -E "s/^[[:space:]]*['\"]?//; s/['\"]?[[:space:]]*$//" \
+    | tr -d '\r'
+}
+
+require_tool() {
+  command -v "${1}" >/dev/null 2>&1 || {
+    printf 'Required command is missing: %s\n' "${1}" >&2
+    return 1
+  }
+}
+
+install_client() {
+  set -euo pipefail
+
+  local tool=""
+  for tool in curl base64 od sha512sum mktemp install sed; do
+    require_tool "${tool}"
+  done
+
+  printf 'Fetching the latest SovChat Linux release...\n'
+  local manifest=""
+  manifest="$(curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+    "${UPDATE_BASE_URL}/latest-linux.yml")"
+
+  local version="$(yaml_scalar version "${manifest}")"
+  local artifact="$(yaml_scalar path "${manifest}")"
+  local expected_base64="$(yaml_scalar sha512 "${manifest}")"
+
+  [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$ ]] || {
+    printf 'Release manifest contains an invalid version.\n' >&2
+    return 4
+  }
+  [[ "${artifact}" =~ ^SovChat-[0-9A-Za-z.+-]+-x86_64\.AppImage$ ]] || {
+    printf 'Release manifest contains an unsafe artifact name.\n' >&2
+    return 4
+  }
+  [[ "${expected_base64}" =~ ^[A-Za-z0-9+/]+={0,2}$ ]] || {
+    printf 'Release manifest contains an invalid checksum.\n' >&2
+    return 4
+  }
+
+  local temp_dir="$(mktemp -d)"
+  trap 'rm -rf -- "${temp_dir}"' RETURN
+  local download_path="${temp_dir}/${artifact}"
+
+  printf 'Downloading SovChat %s...\n' "${version}"
+  curl --proto '=https' --tlsv1.2 --fail --location --show-error \
+    --output "${download_path}" "${UPDATE_BASE_URL}/${artifact}"
+
+  printf 'Verifying SHA-512 checksum...\n'
+  local expected_hex=""
+  local actual_hex=""
+  expected_hex="$(printf '%s' "${expected_base64}" | base64 --decode | od -An -v -tx1 | tr -d '[:space:]')"
+  actual_hex="$(sha512sum "${download_path}" | awk '{print $1}')"
+  [[ "${#expected_hex}" -eq 128 && "${actual_hex}" == "${expected_hex}" ]] || {
+    printf 'Checksum verification failed. The download was not installed.\n' >&2
+    return 5
+  }
+
+  install -d -m 0755 "${INSTALL_DIR}"
+  install -m 0755 "${download_path}" "${INSTALL_TARGET}.new"
+  if [[ -f "${INSTALL_TARGET}" ]]; then
+    mv -f -- "${INSTALL_TARGET}" "${INSTALL_TARGET}.previous"
+  fi
+  mv -f -- "${INSTALL_TARGET}.new" "${INSTALL_TARGET}"
+  printf '%s\n' "${version}" > "${VERSION_FILE}"
+
+  local bin_dir="${HOME}/.local/bin"
+  install -d -m 0755 "${bin_dir}"
+  if [[ ! -e "${bin_dir}/sovchat" || -L "${bin_dir}/sovchat" ]]; then
+    ln -sfn "${INSTALL_TARGET}" "${bin_dir}/sovchat"
+  else
+    printf 'Keeping the existing non-symlink launcher at %s.\n' "${bin_dir}/sovchat"
+  fi
+
+  local icon_dir="${HOME}/.local/share/icons/hicolor/scalable/apps"
+  local desktop_dir="${HOME}/.local/share/applications"
+  install -d -m 0755 "${icon_dir}" "${desktop_dir}"
+  install -m 0644 "${PLUGIN_DIR}/sovchat.svg" "${icon_dir}/${APP_ID}.svg"
+
+  local escaped_target="${INSTALL_TARGET//\\/\\\\}"
+  escaped_target="${escaped_target//\"/\\\"}"
+  {
+    printf '[Desktop Entry]\n'
+    printf 'Type=Application\n'
+    printf 'Name=%s\n' "${APP_NAME}"
+    printf 'Comment=Private voice, chat, and screen sharing\n'
+    printf 'Exec="%s"\n' "${escaped_target}"
+    printf 'TryExec=%s\n' "${INSTALL_TARGET}"
+    printf 'Icon=%s\n' "${APP_ID}"
+    printf 'Terminal=false\n'
+    printf 'Categories=Network;Chat;\n'
+    printf 'StartupWMClass=SovChat\n'
+    printf 'X-AppImage-Version=%s\n' "${version}"
+  } > "${desktop_dir}/${APP_ID}.desktop"
+  chmod 0644 "${desktop_dir}/${APP_ID}.desktop"
+
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "${desktop_dir}" >/dev/null 2>&1 || true
+  fi
+
+  printf '\nInstalled SovChat %s to %s\n' "${version}" "${INSTALL_TARGET}"
+  if ! ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
+    printf '\nAppImage note: install FUSE 2 once with `omarchy pkg add fuse2` if SovChat does not open.\n'
+  fi
+}
+
+usage() {
+  printf 'Usage: %s {status|launch|install} [executable]\n' "${0##*/}" >&2
+}
+
+case "${1:-}" in
+  status)
+    print_status "${2:-}"
+    ;;
+  launch)
+    launch_client "${2:-}"
+    ;;
+  install)
+    install_client
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
