@@ -4,6 +4,7 @@
   "name": "SovChat",
   "version": "0.1.0",
   "author": "SovChat",
+  "license": "MIT",
   "description": "An Omarchy-native launcher and status panel for the SovChat desktop client.",
   "kinds": [
     "bar-widget"

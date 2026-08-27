@@ -41,6 +41,14 @@ Omarchy copies the plugin to `~/.config/omarchy/plugins/com.sovchat.omarchy/`, v
 
 For development without installing the checkout, set `SOVCHAT_OMARCHY_PLUGIN_DIR` to this directory before restarting the shell.
 
+## Remove
+
+```bash
+omarchy plugin remove com.sovchat.omarchy
+```
+
+Removal deletes the copied plugin directory only. The optional SovChat desktop client remains installed until the user removes it separately.
+
 ## Client discovery
 
 The widget automatically checks the standard SovChat install target, command path, `~/Applications`, `~/Downloads`, and common extracted-archive locations. A custom absolute executable can be set in the Omarchy bar settings for the SovChat widget.
