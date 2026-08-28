@@ -5,11 +5,11 @@ set -u
 readonly APP_ID="com.sovchat.desktop"
 readonly APP_NAME="SovChat"
 readonly PROCESS_NAME="SovChatDesktop"
-readonly CLIENT_VERSION="0.4.4"
-readonly CLIENT_ARTIFACT="SovChat-0.4.4-x86_64.AppImage"
-readonly CLIENT_URL="https://sovchat.com/desktop-updates/linux/SovChat-0.4.4-x86_64.AppImage"
-readonly CLIENT_SHA512_HEX="9649bdc95de9a9947583330076b40cf59eb20d120e44a1edb191c9c7f76e7ed04cf13292d70f1f28288e1f506431f7ce6a0d32e39a787445ab0ebf02d7b64e3e"
-readonly CLIENT_EXPECTED_BYTES="134933024"
+readonly CLIENT_VERSION="0.4.5"
+readonly CLIENT_ARTIFACT="SovChat-0.4.5-x86_64.AppImage"
+readonly CLIENT_URL="https://sovchat.com/desktop-updates/linux/SovChat-0.4.5-x86_64.AppImage"
+readonly CLIENT_SHA512_HEX="f28d8646a198ba90ebfd0bf816a7aaff4c8720a9238f1951fbbde232b9d6f418f08d2d449009e9bd7a14603636ca851499cd99933cfb9f5478fbb45b34bc380b"
+readonly CLIENT_EXPECTED_BYTES="134937195"
 readonly CLIENT_MAX_BYTES="268435456"
 readonly INSTALL_DIR="${HOME}/.local/opt/sovchat"
 readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat.AppImage"
@@ -159,18 +159,37 @@ focus_running_client() {
   command -v jq >/dev/null 2>&1 || return 1
 
   local address=""
-  address="$(hyprctl clients -j 2>/dev/null | jq -r '
+  local active_workspace=""
+  local client_record=""
+  local workspace=""
+  client_record="$(hyprctl clients -j 2>/dev/null | jq -r '
     [ .[]
       | select(
           [(.class // ""), (.initialClass // "")]
           | map(ascii_downcase)
           | any(. == "sovchat" or . == "sovchatdesktop" or . == "com.sovchat.desktop")
         )
-    ][0].address // empty
+    ]
+    | sort_by(if ((.workspace.name // "") | startswith("special:")) then 0 else 1 end)
+    | .[0]
+    | if . then [(.address // ""), (.workspace.name // "")] | @tsv else empty end
   ' 2>/dev/null || true)"
 
-  [[ -n "${address}" ]] || return 1
-  hyprctl dispatch focuswindow "address:${address}" >/dev/null 2>&1
+  IFS=$'\t' read -r address workspace <<< "${client_record}"
+  [[ "${address}" =~ ^0x[0-9A-Fa-f]+$ ]] || return 1
+
+  if [[ "${workspace}" == special:* ]]; then
+    active_workspace="$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // empty' 2>/dev/null || true)"
+    if [[ "${active_workspace}" =~ ^[1-9][0-9]*$ ]]; then
+      hyprctl dispatch \
+        "hl.dsp.window.move({ window = \"address:${address}\", workspace = \"${active_workspace}\", follow = false })" \
+        >/dev/null 2>&1 || \
+        hyprctl dispatch movetoworkspacesilent "${active_workspace},address:${address}" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:${address}\" })" >/dev/null 2>&1 || \
+    hyprctl dispatch focuswindow "address:${address}" >/dev/null 2>&1
 }
 
 launch_client() {
@@ -305,7 +324,7 @@ install_client() {
     printf 'Icon=%s\n' "${APP_ID}"
     printf 'Terminal=false\n'
     printf 'Categories=Network;Chat;\n'
-    printf 'StartupWMClass=SovChat\n'
+    printf 'StartupWMClass=%s\n' "${APP_ID}"
     printf 'X-AppImage-Version=%s\n' "${CLIENT_VERSION}"
   } > "${desktop_dir}/${APP_ID}.desktop"
   chmod 0644 "${desktop_dir}/${APP_ID}.desktop"
