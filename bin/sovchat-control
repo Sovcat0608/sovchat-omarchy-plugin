@@ -5,7 +5,12 @@ set -u
 readonly APP_ID="com.sovchat.desktop"
 readonly APP_NAME="SovChat"
 readonly PROCESS_NAME="SovChatDesktop"
-readonly UPDATE_BASE_URL="https://sovchat.com/desktop-updates/linux"
+readonly CLIENT_VERSION="0.4.4"
+readonly CLIENT_ARTIFACT="SovChat-0.4.4-x86_64.AppImage"
+readonly CLIENT_URL="https://sovchat.com/desktop-updates/linux/SovChat-0.4.4-x86_64.AppImage"
+readonly CLIENT_SHA512_HEX="9649bdc95de9a9947583330076b40cf59eb20d120e44a1edb191c9c7f76e7ed04cf13292d70f1f28288e1f506431f7ce6a0d32e39a787445ab0ebf02d7b64e3e"
+readonly CLIENT_EXPECTED_BYTES="134933024"
+readonly CLIENT_MAX_BYTES="268435456"
 readonly INSTALL_DIR="${HOME}/.local/opt/sovchat"
 readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat.AppImage"
 readonly VERSION_FILE="${INSTALL_DIR}/VERSION"
@@ -188,16 +193,6 @@ launch_client() {
   fi
 }
 
-yaml_scalar() {
-  local key="${1}"
-  local source="${2}"
-  printf '%s\n' "${source}" \
-    | sed -n "s/^${key}:[[:space:]]*//p" \
-    | head -n 1 \
-    | sed -E "s/^[[:space:]]*['\"]?//; s/['\"]?[[:space:]]*$//" \
-    | tr -d '\r'
-}
-
 require_tool() {
   command -v "${1}" >/dev/null 2>&1 || {
     printf 'Required command is missing: %s\n' "${1}" >&2
@@ -209,46 +204,70 @@ install_client() {
   set -euo pipefail
 
   local tool=""
-  for tool in curl base64 od sha512sum mktemp install sed; do
+  for tool in curl sha512sum mktemp install stat awk cat; do
     require_tool "${tool}"
   done
 
-  printf 'Fetching the latest SovChat Linux release...\n'
-  local manifest=""
-  manifest="$(curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
-    "${UPDATE_BASE_URL}/latest-linux.yml")"
-
-  local version="$(yaml_scalar version "${manifest}")"
-  local artifact="$(yaml_scalar path "${manifest}")"
-  local expected_base64="$(yaml_scalar sha512 "${manifest}")"
-
-  [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$ ]] || {
-    printf 'Release manifest contains an invalid version.\n' >&2
+  [[ "${CLIENT_URL}" == "https://sovchat.com/desktop-updates/linux/${CLIENT_ARTIFACT}" ]] || {
+    printf 'The reviewed SovChat download URL is invalid.\n' >&2
     return 4
   }
-  [[ "${artifact}" =~ ^SovChat-[0-9A-Za-z.+-]+-x86_64\.AppImage$ ]] || {
-    printf 'Release manifest contains an unsafe artifact name.\n' >&2
+  [[ "${CLIENT_ARTIFACT}" == "SovChat-${CLIENT_VERSION}-x86_64.AppImage" ]] || {
+    printf 'The reviewed SovChat artifact name is invalid.\n' >&2
     return 4
   }
-  [[ "${expected_base64}" =~ ^[A-Za-z0-9+/]+={0,2}$ ]] || {
-    printf 'Release manifest contains an invalid checksum.\n' >&2
+  [[ "${CLIENT_SHA512_HEX}" =~ ^[0-9a-f]{128}$ ]] || {
+    printf 'The reviewed SovChat checksum is invalid.\n' >&2
+    return 4
+  }
+  [[ "${CLIENT_EXPECTED_BYTES}" =~ ^[0-9]+$ ]] || {
+    printf 'The reviewed SovChat artifact size is invalid.\n' >&2
     return 4
   }
 
   local temp_dir="$(mktemp -d)"
   trap 'rm -rf -- "${temp_dir}"' RETURN
-  local download_path="${temp_dir}/${artifact}"
+  local download_path="${temp_dir}/${CLIENT_ARTIFACT}"
+  local effective_url_file="${temp_dir}/effective-url"
 
-  printf 'Downloading SovChat %s...\n' "${version}"
-  curl --proto '=https' --tlsv1.2 --fail --location --show-error \
-    --output "${download_path}" "${UPDATE_BASE_URL}/${artifact}"
+  printf 'Downloading reviewed SovChat %s...\n' "${CLIENT_VERSION}"
+  curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+    --max-redirs 0 \
+    --connect-timeout 10 \
+    --max-time 300 \
+    --speed-limit 1024 \
+    --speed-time 30 \
+    --max-filesize "${CLIENT_MAX_BYTES}" \
+    --output "${download_path}" \
+    --write-out '%{url_effective}' \
+    "${CLIENT_URL}" > "${effective_url_file}"
+
+  local effective_url=""
+  effective_url="$(cat -- "${effective_url_file}")"
+  [[ "${effective_url}" == "${CLIENT_URL}" ]] || {
+    printf 'The download left the reviewed SovChat HTTPS URL.\n' >&2
+    return 5
+  }
+
+  local actual_bytes=""
+  actual_bytes="$(stat -c '%s' "${download_path}")"
+  [[ "${actual_bytes}" =~ ^[0-9]+$ ]] || {
+    printf 'The downloaded SovChat artifact size could not be verified.\n' >&2
+    return 5
+  }
+  (( actual_bytes <= CLIENT_MAX_BYTES )) || {
+    printf 'The downloaded SovChat artifact exceeded the size ceiling.\n' >&2
+    return 5
+  }
+  [[ "${actual_bytes}" == "${CLIENT_EXPECTED_BYTES}" ]] || {
+    printf 'The downloaded SovChat artifact size did not match the reviewed release.\n' >&2
+    return 5
+  }
 
   printf 'Verifying SHA-512 checksum...\n'
-  local expected_hex=""
   local actual_hex=""
-  expected_hex="$(printf '%s' "${expected_base64}" | base64 --decode | od -An -v -tx1 | tr -d '[:space:]')"
   actual_hex="$(sha512sum "${download_path}" | awk '{print $1}')"
-  [[ "${#expected_hex}" -eq 128 && "${actual_hex}" == "${expected_hex}" ]] || {
+  [[ "${actual_hex}" == "${CLIENT_SHA512_HEX}" ]] || {
     printf 'Checksum verification failed. The download was not installed.\n' >&2
     return 5
   }
@@ -259,7 +278,7 @@ install_client() {
     mv -f -- "${INSTALL_TARGET}" "${INSTALL_TARGET}.previous"
   fi
   mv -f -- "${INSTALL_TARGET}.new" "${INSTALL_TARGET}"
-  printf '%s\n' "${version}" > "${VERSION_FILE}"
+  printf '%s\n' "${CLIENT_VERSION}" > "${VERSION_FILE}"
 
   local bin_dir="${HOME}/.local/bin"
   install -d -m 0755 "${bin_dir}"
@@ -287,7 +306,7 @@ install_client() {
     printf 'Terminal=false\n'
     printf 'Categories=Network;Chat;\n'
     printf 'StartupWMClass=SovChat\n'
-    printf 'X-AppImage-Version=%s\n' "${version}"
+    printf 'X-AppImage-Version=%s\n' "${CLIENT_VERSION}"
   } > "${desktop_dir}/${APP_ID}.desktop"
   chmod 0644 "${desktop_dir}/${APP_ID}.desktop"
 
@@ -295,7 +314,7 @@ install_client() {
     update-desktop-database "${desktop_dir}" >/dev/null 2>&1 || true
   fi
 
-  printf '\nInstalled SovChat %s to %s\n' "${version}" "${INSTALL_TARGET}"
+  printf '\nInstalled SovChat %s to %s\n' "${CLIENT_VERSION}" "${INSTALL_TARGET}"
   if ! ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
     printf '\nAppImage note: install FUSE 2 once with `omarchy pkg add fuse2` if SovChat does not open.\n'
   fi

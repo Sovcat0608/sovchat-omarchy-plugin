@@ -7,7 +7,7 @@ An Omarchy Quattro shell companion for SovChat. It adds a theme-aware bar widget
 - Shows whether the local SovChat desktop client is running, installed, or missing.
 - Opens the panel with a left click, launches or focuses the client with a right click, and opens the web app with a middle click.
 - Provides native Omarchy actions for the desktop client and web app.
-- Can install or update the latest x64 AppImage into `~/.local/opt/sovchat/` after verifying the release SHA-512 checksum.
+- Can install the reviewed x64 AppImage snapshot into `~/.local/opt/sovchat/` after verifying its pinned size and SHA-512 checksum.
 - Follows the active Omarchy popup palette, typography, spacing, borders, and bar geometry.
 
 The plugin does not read SovChat sessions, browser storage, Electron data, account credentials, or voice tokens.
@@ -53,7 +53,7 @@ Removal deletes the copied plugin directory only. The optional SovChat desktop c
 
 The widget automatically checks the standard SovChat install target, command path, `~/Applications`, `~/Downloads`, and common extracted-archive locations. A custom absolute executable can be set in the Omarchy bar settings for the SovChat widget.
 
-The optional installer is deliberately user initiated. It downloads `latest-linux.yml` and its named AppImage from `https://sovchat.com/desktop-updates/linux/`, validates the artifact name, verifies the published SHA-512 digest, and installs only inside the current user's home directory. It never calls `sudo` or a package manager.
+The optional installer is deliberately user initiated. Its immutable AppImage URL, exact byte size, and SHA-512 digest are pinned in the reviewed plugin source. It refuses redirects, enforces strict connection and overall timeouts, caps the download at 256 MiB, verifies the effective URL, and installs only inside the current user's home directory. A newer client requires a reviewed plugin update. The installer never calls `sudo` or a package manager.
 
 ## Validate
 
@@ -80,5 +80,5 @@ Omarchy shell plugins run unsandboxed in the long-lived `omarchy-shell` process.
 - QML runs only the bundled helper and fixed Omarchy launch commands.
 - The helper accepts only `status`, `launch`, and `install` actions.
 - No credentials or secrets are read or written.
-- The installer accepts only the expected HTTPS host and a tightly validated AppImage filename.
-- The downloaded client is installed only after its SHA-512 checksum matches the release manifest.
+- The installer accepts only the exact reviewed HTTPS URL and refuses redirects.
+- The downloaded client is installed only after its byte size and pinned SHA-512 checksum match the reviewed release.
