@@ -252,7 +252,7 @@ Panel {
             elide: Text.ElideRight
           }
           Text {
-            text: "PLUGIN 0.1.2"
+            text: "PLUGIN 0.1.3"
             color: root.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

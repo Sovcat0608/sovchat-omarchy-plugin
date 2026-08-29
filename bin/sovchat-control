@@ -1,9 +1,7 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 set -u
 
-readonly APP_ID="com.sovchat.desktop"
-readonly APP_NAME="SovChat"
 readonly PROCESS_NAME="SovChatDesktop"
 readonly CLIENT_VERSION="0.4.5"
 readonly CLIENT_ARTIFACT="SovChat-0.4.5-x86_64.AppImage"
@@ -17,6 +15,9 @@ readonly VERSION_FILE="${INSTALL_DIR}/VERSION"
 readonly SCRIPT_SOURCE="${BASH_SOURCE[0]-$0}"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${SCRIPT_SOURCE}")" && pwd)"
 readonly PLUGIN_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+readonly SAFE_INSTALLER="${SCRIPT_DIR}/sovchat-safe-install.py"
+readonly CURL_BIN="/usr/bin/curl"
+readonly PYTHON_BIN="/usr/bin/python3"
 
 sanitize_field() {
   local value="${1:-}"
@@ -212,20 +213,21 @@ launch_client() {
   fi
 }
 
-require_tool() {
-  command -v "${1}" >/dev/null 2>&1 || {
-    printf 'Required command is missing: %s\n' "${1}" >&2
-    return 1
-  }
-}
-
 install_client() {
   set -euo pipefail
 
-  local tool=""
-  for tool in curl sha512sum mktemp install stat awk cat; do
-    require_tool "${tool}"
-  done
+  [[ -x "${CURL_BIN}" ]] || {
+    printf 'Required Omarchy runtime is missing: %s\n' "${CURL_BIN}" >&2
+    return 4
+  }
+  [[ -x "${PYTHON_BIN}" ]] || {
+    printf 'Required Omarchy runtime is missing: %s\n' "${PYTHON_BIN}" >&2
+    return 4
+  }
+  [[ -f "${SAFE_INSTALLER}" && ! -L "${SAFE_INSTALLER}" ]] || {
+    printf 'The bundled SovChat secure installer is missing or redirected.\n' >&2
+    return 4
+  }
 
   [[ "${CLIENT_URL}" == "https://sovchat.com/desktop-updates/linux/${CLIENT_ARTIFACT}" ]] || {
     printf 'The reviewed SovChat download URL is invalid.\n' >&2
@@ -244,96 +246,27 @@ install_client() {
     return 4
   }
 
-  local temp_dir="$(mktemp -d)"
-  trap 'rm -rf -- "${temp_dir}"' RETURN
-  local download_path="${temp_dir}/${CLIENT_ARTIFACT}"
-  local effective_url_file="${temp_dir}/effective-url"
-
   printf 'Downloading reviewed SovChat %s...\n' "${CLIENT_VERSION}"
-  curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+  if ! "${CURL_BIN}" --proto '=https' --proto-redir '=https' --tlsv1.2 \
+    --fail --silent --show-error \
     --max-redirs 0 \
     --connect-timeout 10 \
     --max-time 300 \
     --speed-limit 1024 \
     --speed-time 30 \
     --max-filesize "${CLIENT_MAX_BYTES}" \
-    --output "${download_path}" \
-    --write-out '%{url_effective}' \
-    "${CLIENT_URL}" > "${effective_url_file}"
-
-  local effective_url=""
-  effective_url="$(cat -- "${effective_url_file}")"
-  [[ "${effective_url}" == "${CLIENT_URL}" ]] || {
-    printf 'The download left the reviewed SovChat HTTPS URL.\n' >&2
+    --output - \
+    "${CLIENT_URL}" | \
+    "${PYTHON_BIN}" "${SAFE_INSTALLER}" \
+      --version "${CLIENT_VERSION}" \
+      --expected-bytes "${CLIENT_EXPECTED_BYTES}" \
+      --maximum-bytes "${CLIENT_MAX_BYTES}" \
+      --sha512 "${CLIENT_SHA512_HEX}" \
+      --icon "${PLUGIN_DIR}/sovchat.svg"; then
+    printf 'The reviewed SovChat client was not installed.\n' >&2
     return 5
-  }
-
-  local actual_bytes=""
-  actual_bytes="$(stat -c '%s' "${download_path}")"
-  [[ "${actual_bytes}" =~ ^[0-9]+$ ]] || {
-    printf 'The downloaded SovChat artifact size could not be verified.\n' >&2
-    return 5
-  }
-  (( actual_bytes <= CLIENT_MAX_BYTES )) || {
-    printf 'The downloaded SovChat artifact exceeded the size ceiling.\n' >&2
-    return 5
-  }
-  [[ "${actual_bytes}" == "${CLIENT_EXPECTED_BYTES}" ]] || {
-    printf 'The downloaded SovChat artifact size did not match the reviewed release.\n' >&2
-    return 5
-  }
-
-  printf 'Verifying SHA-512 checksum...\n'
-  local actual_hex=""
-  actual_hex="$(sha512sum "${download_path}" | awk '{print $1}')"
-  [[ "${actual_hex}" == "${CLIENT_SHA512_HEX}" ]] || {
-    printf 'Checksum verification failed. The download was not installed.\n' >&2
-    return 5
-  }
-
-  install -d -m 0755 "${INSTALL_DIR}"
-  install -m 0755 "${download_path}" "${INSTALL_TARGET}.new"
-  if [[ -f "${INSTALL_TARGET}" ]]; then
-    mv -f -- "${INSTALL_TARGET}" "${INSTALL_TARGET}.previous"
-  fi
-  mv -f -- "${INSTALL_TARGET}.new" "${INSTALL_TARGET}"
-  printf '%s\n' "${CLIENT_VERSION}" > "${VERSION_FILE}"
-
-  local bin_dir="${HOME}/.local/bin"
-  install -d -m 0755 "${bin_dir}"
-  if [[ ! -e "${bin_dir}/sovchat" || -L "${bin_dir}/sovchat" ]]; then
-    ln -sfn "${INSTALL_TARGET}" "${bin_dir}/sovchat"
-  else
-    printf 'Keeping the existing non-symlink launcher at %s.\n' "${bin_dir}/sovchat"
   fi
 
-  local icon_dir="${HOME}/.local/share/icons/hicolor/scalable/apps"
-  local desktop_dir="${HOME}/.local/share/applications"
-  install -d -m 0755 "${icon_dir}" "${desktop_dir}"
-  install -m 0644 "${PLUGIN_DIR}/sovchat.svg" "${icon_dir}/${APP_ID}.svg"
-
-  local escaped_target="${INSTALL_TARGET//\\/\\\\}"
-  escaped_target="${escaped_target//\"/\\\"}"
-  {
-    printf '[Desktop Entry]\n'
-    printf 'Type=Application\n'
-    printf 'Name=%s\n' "${APP_NAME}"
-    printf 'Comment=Private voice, chat, and screen sharing\n'
-    printf 'Exec="%s"\n' "${escaped_target}"
-    printf 'TryExec=%s\n' "${INSTALL_TARGET}"
-    printf 'Icon=%s\n' "${APP_ID}"
-    printf 'Terminal=false\n'
-    printf 'Categories=Network;Chat;\n'
-    printf 'StartupWMClass=%s\n' "${APP_ID}"
-    printf 'X-AppImage-Version=%s\n' "${CLIENT_VERSION}"
-  } > "${desktop_dir}/${APP_ID}.desktop"
-  chmod 0644 "${desktop_dir}/${APP_ID}.desktop"
-
-  if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database "${desktop_dir}" >/dev/null 2>&1 || true
-  fi
-
-  printf '\nInstalled SovChat %s to %s\n' "${CLIENT_VERSION}" "${INSTALL_TARGET}"
   if ! ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
     printf '\nAppImage note: install FUSE 2 once with `omarchy pkg add fuse2` if SovChat does not open.\n'
   fi
