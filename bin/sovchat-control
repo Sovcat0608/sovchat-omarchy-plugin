@@ -2,15 +2,16 @@
 
 set -u
 
-readonly PROCESS_NAME="SovChatDesktop"
-readonly CLIENT_VERSION="0.4.5"
-readonly CLIENT_ARTIFACT="SovChat-0.4.5-x86_64.AppImage"
-readonly CLIENT_URL="https://sovchat.com/desktop-updates/linux/SovChat-0.4.5-x86_64.AppImage"
-readonly CLIENT_SHA512_HEX="f28d8646a198ba90ebfd0bf816a7aaff4c8720a9238f1951fbbde232b9d6f418f08d2d449009e9bd7a14603636ca851499cd99933cfb9f5478fbb45b34bc380b"
-readonly CLIENT_EXPECTED_BYTES="134937195"
+readonly PROCESS_NAME="SovChatOmarchy"
+readonly CLIENT_VERSION="0.4.7"
+readonly CLIENT_ARTIFACT="SovChat-Omarchy-0.4.7-x86_64.AppImage"
+readonly CLIENT_URL="https://sovchat.com/desktop-updates/omarchy/SovChat-Omarchy-0.4.7-x86_64.AppImage"
+readonly CLIENT_RELEASE_READY="true"
+readonly CLIENT_SHA512_HEX="48540f5f2f0882990dd6e1ccc5f8eb7c2c60efe65f14a426e40593561e3ff82d3a36f8184f8a4007cf37ecc3cee1e6180a255f83a222eb3792c18b3aae7aa229"
+readonly CLIENT_EXPECTED_BYTES="129110268"
 readonly CLIENT_MAX_BYTES="268435456"
-readonly INSTALL_DIR="${HOME}/.local/opt/sovchat"
-readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat.AppImage"
+readonly INSTALL_DIR="${HOME}/.local/opt/sovchat-omarchy"
+readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat-Omarchy.AppImage"
 readonly VERSION_FILE="${INSTALL_DIR}/VERSION"
 readonly SCRIPT_SOURCE="${BASH_SOURCE[0]-$0}"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${SCRIPT_SOURCE}")" && pwd)"
@@ -54,12 +55,10 @@ find_launcher() {
 
   local known_candidates=(
     "${INSTALL_TARGET}"
-    "${HOME}/.local/bin/SovChatDesktop"
-    "${HOME}/.local/bin/sovchat"
-    "${HOME}/.local/share/SovChat/SovChatDesktop"
-    "${HOME}/.local/share/sovchat/SovChatDesktop"
-    "/opt/SovChat/SovChatDesktop"
-    "/opt/sovchat/SovChatDesktop"
+    "${HOME}/.local/bin/SovChatOmarchy"
+    "${HOME}/.local/bin/sovchat-omarchy"
+    "${HOME}/.local/share/SovChatOmarchy/SovChatOmarchy"
+    "/opt/SovChatOmarchy/SovChatOmarchy"
   )
 
   for candidate in "${known_candidates[@]}"; do
@@ -69,13 +68,13 @@ find_launcher() {
     fi
   done
 
-  candidate="$(type -P SovChatDesktop 2>/dev/null || true)"
+  candidate="$(type -P SovChatOmarchy 2>/dev/null || true)"
   if usable_launcher "${candidate}"; then
     printf '%s\n' "${candidate}"
     return 0
   fi
 
-  candidate="$(type -P sovchat 2>/dev/null || true)"
+  candidate="$(type -P sovchat-omarchy 2>/dev/null || true)"
   if usable_launcher "${candidate}"; then
     printf '%s\n' "${candidate}"
     return 0
@@ -83,11 +82,10 @@ find_launcher() {
 
   shopt -s nullglob
   local discovered=(
-    "${HOME}"/Applications/SovChat-*.AppImage
-    "${HOME}"/Applications/SovChat*.AppImage
-    "${HOME}"/Applications/sovchat-*/SovChatDesktop
-    "${HOME}"/Downloads/SovChat-*.AppImage
-    "${HOME}"/Downloads/sovchat-*/SovChatDesktop
+    "${HOME}"/Applications/SovChat-Omarchy-*.AppImage
+    "${HOME}"/Applications/sovchat-omarchy-*/SovChatOmarchy
+    "${HOME}"/Downloads/SovChat-Omarchy-*.AppImage
+    "${HOME}"/Downloads/sovchat-omarchy-*/SovChatOmarchy
   )
   shopt -u nullglob
 
@@ -106,7 +104,7 @@ find_launcher() {
 client_running() {
   if command -v pgrep >/dev/null 2>&1; then
     pgrep -x "${PROCESS_NAME}" >/dev/null 2>&1 && return 0
-    pgrep -f '(^|/)(SovChatDesktop|SovChat-[^/[:space:]]*\.AppImage)([[:space:]]|$)' >/dev/null 2>&1 && return 0
+    pgrep -f '(^|/)(SovChatOmarchy|SovChat-Omarchy-[^/[:space:]]*\.AppImage)([[:space:]]|$)' >/dev/null 2>&1 && return 0
   fi
 
   ps -eo comm= 2>/dev/null | awk -v name="${PROCESS_NAME}" '$1 == name { found = 1 } END { exit(found ? 0 : 1) }'
@@ -123,7 +121,7 @@ detect_version() {
   if [[ -z "${candidate}" ]]; then
     local base="$(basename -- "${launcher}")"
     local parent="$(basename -- "$(dirname -- "${launcher}")")"
-    if [[ "${base}" =~ SovChat-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)-x86_64\.AppImage$ ]]; then
+    if [[ "${base}" =~ SovChat-Omarchy-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)-x86_64\.AppImage$ ]]; then
       candidate="${BASH_REMATCH[1]}"
     elif [[ "${parent}" =~ ^sovchat-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)$ ]]; then
       candidate="${BASH_REMATCH[1]}"
@@ -168,7 +166,7 @@ focus_running_client() {
       | select(
           [(.class // ""), (.initialClass // "")]
           | map(ascii_downcase)
-          | any(. == "sovchat" or . == "sovchatdesktop" or . == "com.sovchat.desktop")
+          | any(. == "sovchatomarchy" or . == "com.sovchat.omarchy")
         )
     ]
     | sort_by(if ((.workspace.name // "") | startswith("special:")) then 0 else 1 end)
@@ -229,11 +227,16 @@ install_client() {
     return 4
   }
 
-  [[ "${CLIENT_URL}" == "https://sovchat.com/desktop-updates/linux/${CLIENT_ARTIFACT}" ]] || {
+  [[ "${CLIENT_RELEASE_READY}" == "true" ]] || {
+    printf 'The first independent SovChat Omarchy client release is not published yet.\n' >&2
+    return 6
+  }
+
+  [[ "${CLIENT_URL}" == "https://sovchat.com/desktop-updates/omarchy/${CLIENT_ARTIFACT}" ]] || {
     printf 'The reviewed SovChat download URL is invalid.\n' >&2
     return 4
   }
-  [[ "${CLIENT_ARTIFACT}" == "SovChat-${CLIENT_VERSION}-x86_64.AppImage" ]] || {
+  [[ "${CLIENT_ARTIFACT}" == "SovChat-Omarchy-${CLIENT_VERSION}-x86_64.AppImage" ]] || {
     printf 'The reviewed SovChat artifact name is invalid.\n' >&2
     return 4
   }

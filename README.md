@@ -1,101 +1,81 @@
 # SovChat for Omarchy
 
-An Omarchy Quattro shell companion for SovChat. It adds a theme-aware bar widget and popup panel without embedding the Electron app inside the long-running shell process.
+Omarchy-native plugin for the independent SovChat Omarchy desktop client.
 
-## What it does
-
-- Shows whether the local SovChat desktop client is running, installed, or missing.
-- Opens the panel with a left click, launches or focuses the client with a right click, and opens the web app with a middle click.
-- Provides native Omarchy actions for the desktop client and web app.
-- Restores a client sent to Omarchy's scratchpad when it is launched or focused again.
-- Can install the reviewed x64 AppImage snapshot into `~/.local/opt/sovchat/` after verifying its pinned size and SHA-512 checksum.
-- Follows the active Omarchy popup palette, typography, spacing, borders, and bar geometry.
-
-The plugin does not read SovChat sessions, browser storage, Electron data, account credentials, or voice tokens.
+- Omarchy bar widget and control panel
+- Dedicated `omarchy` client/release lane
+- Native Hyprland scratchpad behavior
+- Descriptor-safe, digest-pinned user installer
 
 ## Requirements
 
-- Omarchy with Quattro shell plugin support.
-- An x86-64 Linux system for the optional AppImage installer.
-- `/usr/bin/curl` and `/usr/bin/python3`. Omarchy already supplies Python through its UWSM session runtime.
-- FUSE 2 for AppImage mounting. If needed, install it once with `omarchy pkg add fuse2`.
+- Omarchy Quattro with third-party plugin support
+- a SovChat account with beta access
+- `bash`, Python 3, and `curl` for the user-level client installer
+- optional `fuse2` support if the AppImage runtime is not already available
 
-The web-app action works without a desktop client.
+The plugin and client run as the signed-in user. They do not require `sudo` or
+modify system configuration.
 
 ## Install
-
-Install and enable the plugin directly from its public repository:
 
 ```bash
 omarchy plugin add https://github.com/Sovcat0608/sovchat-omarchy-plugin.git --enable
 ```
 
-## Install from a development checkout
+Open the SovChat bar widget and choose **Install client**. The installer accepts
+only the reviewed versioned AppImage URL, exact byte count, and SHA-512 digest.
+It writes the client, desktop entry, and icon beneath the current user's
+`~/.local` directory.
 
-Run this on the Omarchy PC, using the actual path to this directory:
+## Updates
+
+Update the plugin checkout with:
 
 ```bash
-omarchy plugin add /path/to/sovchat/variants/omarchy-plugin --enable
+omarchy plugin update --yes
 ```
 
-Omarchy copies the plugin to `~/.config/omarchy/plugins/com.sovchat.omarchy/`, validates the manifest, and enables the bar widget. It does not execute an install hook or request root access.
-
-For development without installing the checkout, set `SOVCHAT_OMARCHY_PLUGIN_DIR` to this directory before restarting the shell.
+The installed AppImage checks SovChat's Omarchy-only update feed shortly after
+launch, hourly, and after resume or unlock. It downloads newer stable versions
+in the background and offers **Update now** when ready.
 
 ## Remove
 
-```bash
-omarchy plugin remove com.sovchat.omarchy
-```
-
-Removal deletes the copied plugin directory only. The optional SovChat desktop client remains installed until the user removes it separately.
-
-## Client discovery
-
-The widget automatically checks the standard SovChat install target, command path, `~/Applications`, `~/Downloads`, and common extracted-archive locations. A custom absolute executable can be set in the Omarchy bar settings for the SovChat widget.
-
-The optional installer is deliberately user initiated. Its immutable AppImage URL, exact byte size, and SHA-512 digest are pinned in the reviewed plugin source. It refuses redirects, enforces strict connection and overall timeouts, caps the download at 256 MiB, and installs only inside the current user's home directory. A newer client requires a reviewed plugin update. The installer never calls `sudo` or a package manager.
-
-The reviewed client snapshot in this plugin version is:
-
-| Field | Pinned value |
-| --- | --- |
-| Client version | `0.4.5` |
-| Artifact | `SovChat-0.4.5-x86_64.AppImage` |
-| URL | `https://sovchat.com/desktop-updates/linux/SovChat-0.4.5-x86_64.AppImage` |
-| Bytes | `134937195` |
-| SHA-512 | `f28d8646a198ba90ebfd0bf816a7aaff4c8720a9238f1951fbbde232b9d6f418f08d2d449009e9bd7a14603636ca851499cd99933cfb9f5478fbb45b34bc380b` |
-
-On Omarchy, SovChat's title-bar minimise button follows the native scratchpad convention. Launching or focusing SovChat from the plugin moves it back to the active workspace. On another Linux desktop, the client falls back to hiding the window and can be reopened from the desktop launcher.
-
-## Validate
-
-On Omarchy:
+Remove the Omarchy plugin with:
 
 ```bash
-omarchy plugin validate .
-qmllint -I "$OMARCHY_PATH/shell" BarWidget.qml Panel.qml
-python3 -m unittest discover -s tests -v
+omarchy plugin remove com.sovchat.omarchy --yes
 ```
 
-From the SovChat repository on any supported development machine:
+The desktop client is deliberately kept when the widget is removed. To remove
+the client too, close SovChat and delete only its owned user-level targets:
 
 ```bash
-npm run test:omarchy-plugin
-npm run pack:omarchy-plugin
+rm -rf -- "$HOME/.local/opt/sovchat-omarchy"
+rm -f -- "$HOME/.local/share/applications/com.sovchat.omarchy.desktop"
+rm -f -- "$HOME/.local/share/icons/hicolor/scalable/apps/com.sovchat.omarchy.svg"
 ```
-
-The package command creates a standalone archive with `manifest.json` at its root. The public plugin repository contains this directory as its root so Omarchy can install it directly from git.
 
 ## Security boundary
 
-Omarchy shell plugins run unsandboxed in the long-lived `omarchy-shell` process. This plugin keeps that surface intentionally narrow:
+Omarchy shell plugins run unsandboxed in the long-lived shell process. This
+plugin keeps that surface intentionally narrow:
 
-- QML runs only the bundled helper and fixed Omarchy launch commands.
+- QML invokes only the bundled helper and fixed Omarchy launch commands.
 - The helper accepts only `status`, `launch`, and `install` actions.
-- No credentials or secrets are read or written.
-- The installer accepts only the exact reviewed HTTPS URL and refuses redirects.
-- The downloaded client is installed only after its byte size and pinned SHA-512 checksum match the reviewed release.
-- The download is streamed into an unnamed `O_TMPFILE` inode inside a pinned destination directory, so there is no predictable staging pathname to replace.
-- Every destination component is opened relative to a directory file descriptor with `O_NOFOLLOW`, checked for current-user ownership and safe permissions, and revalidated before and after publication.
-- The AppImage, `VERSION`, icon, and desktop entry are published relative to those pinned descriptors. Existing final symlinks are unlinked rather than followed, and a concurrent final-path insertion makes publication fail closed.
+- No credentials, browser storage, voice tokens, or SovChat sessions are read.
+- Initial client installation uses one immutable versioned HTTPS URL, refuses
+  redirects, and verifies the reviewed byte count and SHA-512 digest.
+- Downloads have strict connection, overall, stall, and 256 MiB size limits.
+- Destination directories are descriptor-pinned with `O_NOFOLLOW`; publication
+  is atomic and fails closed on symlink or concurrent-path replacement.
+- Installation remains user-scoped and invokes neither `sudo` nor a package
+  manager.
+
+The installed client connects only to `https://sovchat.com` and
+`wss://livekit.sovchat.com`. This plugin repository is licensed under MIT; see
+[LICENSE](LICENSE).
+
+The independently versioned client source, releases, and development handover
+are maintained in [sovchat-omarchy](https://github.com/Sovcat0608/sovchat-omarchy).

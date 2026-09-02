@@ -14,8 +14,8 @@ from contextlib import ExitStack
 from dataclasses import dataclass
 
 
-APP_ID = "com.sovchat.desktop"
-APP_NAME = "SovChat"
+APP_ID = "com.sovchat.omarchy"
+APP_NAME = "SovChat Omarchy"
 BUFFER_SIZE = 1024 * 1024
 AT_FDCWD = -100
 AT_SYMLINK_FOLLOW = 0x400
@@ -388,8 +388,8 @@ def install_from_stream(config: InstallConfig, stream: io.BufferedReader) -> str
 
             app_chain = open_user_tree(
                 home_chain.fd,
-                ((".local", 0o700), ("opt", 0o700), ("sovchat", 0o700)),
-                "SovChat application directory",
+                ((".local", 0o700), ("opt", 0o700), ("sovchat-omarchy", 0o700)),
+                "SovChat Omarchy application directory",
             )
             resources.callback(app_chain.close)
             icon_chain = open_user_tree(
@@ -415,7 +415,13 @@ def install_from_stream(config: InstallConfig, stream: io.BufferedReader) -> str
             lock_fd = acquire_install_lock(app_chain.fd)
             resources.callback(os.close, lock_fd)
             icon_payload = read_regular_file(config.icon_path, 1024 * 1024)
-            install_target = os.path.join(config.home, ".local", "opt", "sovchat", "SovChat.AppImage")
+            install_target = os.path.join(
+                config.home,
+                ".local",
+                "opt",
+                "sovchat-omarchy",
+                "SovChat-Omarchy.AppImage",
+            )
             desktop_payload = desktop_entry(install_target, config.version)
 
             artifact_fd = stage_verified_stream(
@@ -427,7 +433,7 @@ def install_from_stream(config: InstallConfig, stream: io.BufferedReader) -> str
                 mode=0o755,
             )
             try:
-                publish_unnamed_file(app_chain, "SovChat.AppImage", artifact_fd)
+                publish_unnamed_file(app_chain, "SovChat-Omarchy.AppImage", artifact_fd)
             finally:
                 os.close(artifact_fd)
 

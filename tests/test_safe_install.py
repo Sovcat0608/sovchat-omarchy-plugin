@@ -29,15 +29,16 @@ class ReviewedSnapshotTests(unittest.TestCase):
         manifest = json.loads((plugin_root / "manifest.json").read_text(encoding="utf-8"))
         control = (plugin_root / "bin/sovchat-control").read_text(encoding="utf-8")
 
-        self.assertEqual(manifest["version"], "0.1.3")
-        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.5"')
-        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-0\.4\.5-x86_64\.AppImage"')
+        self.assertEqual(manifest["version"], "0.1.4")
+        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.7"')
+        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"')
         self.assertRegex(
             control,
-            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/linux/SovChat-0\.4\.5-x86_64\.AppImage"',
+            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"',
         )
-        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="134937195"')
-        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="[0-9a-f]{128}"')
+        self.assertRegex(control, r'readonly CLIENT_RELEASE_READY="true"')
+        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="129110268"')
+        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="48540f5f2f0882990dd6e1ccc5f8eb7c2c60efe65f14a426e40593561e3ff82d3a36f8184f8a4007cf37ecc3cee1e6180a255f83a222eb3792c18b3aae7aa229"')
         self.assertNotIn("${INSTALL_TARGET}.new", control)
         self.assertNotRegex(control, re.compile(r"\binstall\s+-[dm]"))
         self.assertNotIn("--location", control)
@@ -78,14 +79,14 @@ class SafeInstallerTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o755)
         self.assertEqual((target.parent / "VERSION").read_text(encoding="ascii"), "9.8.7\n")
         self.assertEqual(
-            (self.home / ".local/share/icons/hicolor/scalable/apps/com.sovchat.desktop.svg").read_bytes(),
+            (self.home / ".local/share/icons/hicolor/scalable/apps/com.sovchat.omarchy.svg").read_bytes(),
             self.icon.read_bytes(),
         )
-        desktop = self.home / ".local/share/applications/com.sovchat.desktop.desktop"
+        desktop = self.home / ".local/share/applications/com.sovchat.omarchy.desktop"
         self.assertIn(f'Exec="{target}"', desktop.read_text(encoding="utf-8"))
 
     def test_checksum_failure_preserves_existing_client(self):
-        target = self.home / ".local/opt/sovchat/SovChat.AppImage"
+        target = self.home / ".local/opt/sovchat-omarchy/SovChat-Omarchy.AppImage"
         target.parent.mkdir(parents=True, mode=0o700)
         target.write_bytes(b"existing-client")
         wrong_digest = hashlib.sha512(b"different-payload").hexdigest()
@@ -108,7 +109,7 @@ class SafeInstallerTests(unittest.TestCase):
     def test_final_symlink_is_replaced_without_touching_its_target(self):
         victim = self.root / "victim-file"
         victim.write_bytes(b"do-not-touch")
-        target = self.home / ".local/opt/sovchat/SovChat.AppImage"
+        target = self.home / ".local/opt/sovchat-omarchy/SovChat-Omarchy.AppImage"
         target.parent.mkdir(parents=True, mode=0o700)
         target.symlink_to(victim)
 
@@ -119,16 +120,16 @@ class SafeInstallerTests(unittest.TestCase):
         self.assertEqual(victim.read_bytes(), b"do-not-touch")
 
     def test_swapped_pinned_directory_cannot_redirect_publication(self):
-        app_path = self.home / ".local/opt/sovchat"
+        app_path = self.home / ".local/opt/sovchat-omarchy"
         app_path.mkdir(parents=True, mode=0o700)
-        held_path = app_path.with_name("sovchat-held")
+        held_path = app_path.with_name("sovchat-omarchy-held")
         victim = self.root / "victim-directory"
         victim.mkdir()
 
         home_chain = INSTALLER.open_home_chain(str(self.home))
         app_chain = INSTALLER.open_user_tree(
             home_chain.fd,
-            ((".local", 0o700), ("opt", 0o700), ("sovchat", 0o700)),
+            ((".local", 0o700), ("opt", 0o700), ("sovchat-omarchy", 0o700)),
             "test application directory",
         )
         staged = INSTALLER.stage_bytes(app_chain.fd, b"safe", 0o644)
@@ -146,7 +147,7 @@ class SafeInstallerTests(unittest.TestCase):
         self.assertFalse((held_path / "VERSION").exists())
 
     def test_concurrent_final_creation_blocks_publication(self):
-        app_path = self.home / ".local/opt/sovchat"
+        app_path = self.home / ".local/opt/sovchat-omarchy"
         app_path.mkdir(parents=True, mode=0o700)
         victim = self.root / "victim-file"
         victim.write_bytes(b"do-not-touch")
@@ -154,7 +155,7 @@ class SafeInstallerTests(unittest.TestCase):
         home_chain = INSTALLER.open_home_chain(str(self.home))
         app_chain = INSTALLER.open_user_tree(
             home_chain.fd,
-            ((".local", 0o700), ("opt", 0o700), ("sovchat", 0o700)),
+            ((".local", 0o700), ("opt", 0o700), ("sovchat-omarchy", 0o700)),
             "test application directory",
         )
         staged = INSTALLER.stage_bytes(app_chain.fd, b"safe", 0o644)
