@@ -4,8 +4,8 @@
 
 | Component | Supported version |
 | --- | --- |
-| Omarchy plugin | 0.1.4 |
-| SovChat Omarchy client | 0.4.7 |
+| Omarchy plugin | 0.1.5 |
+| SovChat Omarchy client | 0.4.8 |
 
 Security updates are delivered through a new reviewed plugin snapshot or the
 dedicated Omarchy client update feed.

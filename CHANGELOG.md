@@ -2,6 +2,24 @@
 
 All notable changes to the SovChat Omarchy plugin are documented here.
 
+## 0.1.5 - 2026-09-03
+
+### Changed
+
+- SovChat account signup is open while capacity remains; users no longer need
+  an access code or a separate Omarchy grant.
+- The marketplace preview and quick start now explain the server-enforced
+  500-account limit.
+- Plugin metadata and the in-panel version label now identify release 0.1.5.
+
+### Security
+
+- The 500-account ceiling is enforced by the SovChat API and database, not by
+  this client-side plugin, so the plugin cannot override it.
+- The plugin pins the verified Omarchy client v0.4.8 URL, exact byte count,
+  and SHA-512 digest. Existing clients discover v0.4.8 through the dedicated
+  update feed on launch, hourly, or after resume and unlock.
+
 ## 0.1.4 - 2026-09-03
 
 ### Added

@@ -5,13 +5,16 @@
 Voice rooms, text chat, and screen or application sharing in a dedicated
 Omarchy desktop client, controlled from a native bar widget.
 
-[Already have beta access? Open the web app](https://sovchat.com/app) ·
+[Create an account](https://sovchat.com/signup) ·
+[Open the web app](https://sovchat.com/app) ·
 [Latest Omarchy client](https://github.com/Sovcat0608/sovchat-omarchy/releases/latest) ·
 [Marketplace listing](https://plugins.omarchy.org/plugin.html?id=com.sovchat.omarchy)
 
 > [!IMPORTANT]
-> SovChat is currently in beta. You need a beta-enabled SovChat account to sign
-> in; installing this plugin does not create an account or grant beta access.
+> Anyone can create a SovChat account while capacity remains. Registration stops
+> automatically at the server-enforced global limit of 500 accounts; no access
+> code or separate Omarchy grant is required. The plugin cannot bypass that
+> limit.
 
 ## What you get
 
@@ -34,18 +37,19 @@ Omarchy desktop client, controlled from a native bar widget.
    widget downloads the reviewed x86_64 AppImage (about 129 MB) into your
    account's `~/.local` directory.
 
-3. Launch SovChat, sign in with your beta-enabled account, and join a room.
+3. Launch SovChat, create an account or sign in, and join a room.
    Choose the share control in the desktop client when you want to present a
    monitor or application window.
 
-Prefer the browser for a quick look? If your account already has beta access,
-choose **Open web app** in the widget or visit [sovchat.com/app](https://sovchat.com/app).
+Prefer the browser for a quick look? Create an account or sign in by choosing
+**Open web app** in the widget or visiting [sovchat.com/app](https://sovchat.com/app).
 
 ## Requirements and limits
 
 - Omarchy Quattro with third-party plugin support
 - x86_64 hardware
-- A SovChat account with beta access
+- A SovChat account; open signup remains available until the server-enforced
+  500-account limit is reached
 - `bash`, Python 3, and `curl` for the user-level installer
 - PipeWire and an XDG Desktop Portal for monitor/window selection
 - Optional `fuse2` support when the AppImage runtime is not already available

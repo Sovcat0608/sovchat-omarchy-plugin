@@ -30,6 +30,7 @@ class MarketplacePresentationTests(unittest.TestCase):
         self.assertIn('role="img"', source_text)
         self.assertIn("<title", source_text)
         self.assertIn("<desc", source_text)
+        self.assertIn("open signup", source_text.lower())
 
     def test_readme_explains_try_install_and_limits(self):
         readme = (PLUGIN_ROOT / "README.md").read_text(encoding="utf-8")
@@ -45,7 +46,11 @@ class MarketplacePresentationTests(unittest.TestCase):
             readme,
         )
         self.assertIn("https://sovchat.com/app", readme)
-        self.assertIn("beta-enabled", lower)
+        self.assertIn("open signup", lower)
+        self.assertIn("server-enforced", lower)
+        self.assertIn("500-account", lower)
+        self.assertRegex(lower, r"no access\s*(?:>\s*)?code")
+        self.assertNotRegex(lower, r"beta[- ]enabled|beta access|access code required")
         self.assertIn("x86_64", lower)
         self.assertIn("pipewire", lower)
         self.assertIn("system audio", lower)
@@ -62,6 +67,8 @@ class MarketplacePresentationTests(unittest.TestCase):
         self.assertIn("text chat", description)
         self.assertIn("screen and application sharing", description)
         self.assertIn("screen-share", manifest["barWidget"]["aliases"])
+        self.assertIn("open signup", description)
+        self.assertIn("500-account", description)
 
     @unittest.skipUnless(os.name == "posix", "Git executable mode is relevant on Linux")
     def test_helpers_are_executable(self):

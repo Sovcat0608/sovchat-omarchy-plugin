@@ -1,6 +1,6 @@
 <svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="preview-title preview-desc">
   <title id="preview-title">SovChat for Omarchy</title>
-  <desc id="preview-desc">Promotional artwork for SovChat's Omarchy bar widget and dedicated desktop client, highlighting voice rooms, text chat, compact mode, and screen or application sharing.</desc>
+  <desc id="preview-desc">Promotional artwork for SovChat's Omarchy bar widget and dedicated desktop client, highlighting voice rooms, text chat, compact mode, screen or application sharing, and open signup up to the server-enforced 500-account limit.</desc>
   <defs>
     <linearGradient id="background" x1="120" y1="20" x2="1500" y2="900" gradientUnits="userSpaceOnUse">
       <stop stop-color="#20383B"/>
@@ -118,7 +118,7 @@
       <text x="908" y="773" fill="#F3F1E7">JOIN A ROOM</text>
 
       <rect x="1170" y="747" width="202" height="40" rx="20" fill="#302D21" stroke="#FFCA2A" stroke-opacity="0.55"/>
-      <text x="1271" y="773" fill="#FFE695" font-size="14" text-anchor="middle">BETA ACCESS REQUIRED</text>
+      <text x="1271" y="773" fill="#FFE695" font-size="14" text-anchor="middle">OPEN SIGNUP · 500 MAX</text>
     </g>
 
     <text x="200" y="852" fill="#80979A" font-size="15" font-weight="700" letter-spacing="2">X86_64 · PIPEWIRE + XDG PORTAL · SOVCHAT.COM</text>
