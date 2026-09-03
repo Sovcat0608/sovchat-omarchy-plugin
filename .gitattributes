@@ -6,3 +6,4 @@ bin/* text eol=lf
 *.qml text eol=lf
 *.svg text eol=lf
 *.yml text eol=lf
+*.png binary
