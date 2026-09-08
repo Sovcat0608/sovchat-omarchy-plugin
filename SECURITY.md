@@ -4,8 +4,8 @@
 
 | Component | Supported version |
 | --- | --- |
-| Omarchy plugin | 0.1.5 |
-| SovChat Omarchy client | 0.4.8 |
+| Omarchy plugin | 0.1.6 |
+| SovChat Omarchy client | 0.4.9 |
 
 Security updates are delivered through a new reviewed plugin snapshot or the
 dedicated Omarchy client update feed.
@@ -28,9 +28,9 @@ plugin keeps that surface intentionally narrow:
 The installer accepts only the reviewed versioned AppImage URL. Before
 publication it verifies:
 
-- an exact byte count of `129110268` bytes;
+- an exact byte count of `129110258` bytes;
 - SHA-512
-  `48540f5f2f0882990dd6e1ccc5f8eb7c2c60efe65f14a426e40593561e3ff82d3a36f8184f8a4007cf37ecc3cee1e6180a255f83a222eb3792c18b3aae7aa229`;
+  `36ea87c29b71e6a61018bd48de24f564c7e682abbfe0f22c61dc79dece977ed616ab1603a13caa88bed848a3e658d644122bc0c5881989ee55384dff2d5ca871`;
 - HTTPS without redirects;
 - strict connection, overall, stall, and 256 MiB transfer limits;
 - descriptor-pinned destination directories with symlink protection;

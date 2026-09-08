@@ -46,16 +46,16 @@ class ReviewedSnapshotTests(unittest.TestCase):
             panel,
         )
 
-        self.assertEqual(manifest["version"], "0.1.5")
-        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.8"')
-        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.8-x86_64\.AppImage"')
+        self.assertEqual(manifest["version"], "0.1.6")
+        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.9"')
+        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.9-x86_64\.AppImage"')
         self.assertRegex(
             control,
-            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.8-x86_64\.AppImage"',
+            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.9-x86_64\.AppImage"',
         )
         self.assertRegex(control, r'readonly CLIENT_RELEASE_READY="true"')
-        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="129110265"')
-        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="23e481678f0c85ae079862dbe4cff70c4d65cb590031533a256f93e0ec93cf375f7ad4d2e58b518b8dc2a4bef47958655b52f69e098ef24a235a00113157933f"')
+        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="129110258"')
+        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="36ea87c29b71e6a61018bd48de24f564c7e682abbfe0f22c61dc79dece977ed616ab1603a13caa88bed848a3e658d644122bc0c5881989ee55384dff2d5ca871"')
         self.assertNotIn("${INSTALL_TARGET}.new", control)
         self.assertNotRegex(control, re.compile(r"\binstall\s+-[dm]"))
         self.assertNotIn("--location", control)
@@ -65,7 +65,7 @@ class ReviewedSnapshotTests(unittest.TestCase):
         self.assertNotIn('.trim().split("\\n")', widget)
         self.assertIn('"STANDALONE FOUND"', panel)
         self.assertIn('"INSTALL OMARCHY EDITION"', panel)
-        self.assertIn('text: "PLUGIN 0.1.5"', panel)
+        self.assertIn('text: "PLUGIN 0.1.6"', panel)
         self.assertIn("fields.length === 7", widget)
         self.assertIn('(fields[0] === "1") === (fields[3] !== "")', widget)
         self.assertIn('(fields[4] === "1") === (fields[6] !== "")', widget)
@@ -75,6 +75,16 @@ class ReviewedSnapshotTests(unittest.TestCase):
         self.assertIn("The SovChat plugin update is incomplete.", widget)
         self.assertIn("enabled: !root.busy && root.actionsReady", panel)
         self.assertIn("migrationRequired && hostWidget ? hostWidget.legacyClientPath", panel)
+
+
+    def test_dynamic_panel_text_is_plain_text(self):
+        panel = (HELPER_PATH.parents[1] / "Panel.qml").read_text(encoding="utf-8")
+        nodes = re.findall(r"\bText\s*\{([^{}]*)\}", panel)
+        self.assertEqual(len(nodes), len(re.findall(r"\bText\s*\{", panel)))
+        dynamic = [node for node in nodes if re.search(r"\btext:\s*root\.", node)]
+        self.assertGreaterEqual(len(dynamic), 5)
+        for node in dynamic:
+            self.assertRegex(node, r"\btextFormat:\s*Text\.PlainText\b")
 
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "Linux process and inode semantics required")

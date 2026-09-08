@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import stat
 import struct
 import unittest
@@ -69,6 +70,16 @@ class MarketplacePresentationTests(unittest.TestCase):
         self.assertIn("screen-share", manifest["barWidget"]["aliases"])
         self.assertIn("open signup", description)
         self.assertIn("500-account", description)
+
+    def test_security_document_matches_reviewed_installer(self):
+        security = (PLUGIN_ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        control = (PLUGIN_ROOT / "bin/sovchat-control").read_text(encoding="utf-8")
+        manifest = json.loads((PLUGIN_ROOT / "manifest.json").read_text(encoding="utf-8"))
+        values = dict(re.findall(r'^readonly (CLIENT_[A-Z0-9_]+)="([^"\n]+)"', control, re.MULTILINE))
+        self.assertIn(f'| Omarchy plugin | {manifest["version"]} |', security)
+        self.assertIn(f'| SovChat Omarchy client | {values["CLIENT_VERSION"]} |', security)
+        self.assertIn(f'`{values["CLIENT_EXPECTED_BYTES"]}` bytes', security)
+        self.assertIn(f'`{values["CLIENT_SHA512_HEX"]}`', security)
 
     @unittest.skipUnless(os.name == "posix", "Git executable mode is relevant on Linux")
     def test_helpers_are_executable(self):

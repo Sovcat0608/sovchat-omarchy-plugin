@@ -2,6 +2,22 @@
 
 All notable changes to the SovChat Omarchy plugin are documented here.
 
+## 0.1.6 - 2026-09-08
+
+### Fixed
+
+- Dynamic panel messages and version labels now render as plain text, preventing
+  process output from being interpreted as rich text by the Omarchy shell.
+- Security documentation now matches the installer's actual artifact pin, with a
+  regression test to prevent future version, size and digest drift.
+
+### Changed
+
+- Pins verified SovChat Omarchy 0.4.9, which removes the extra voice gate that
+  could clip quiet words, preserves suppression choices and labels RNNoise accurately.
+- Existing Omarchy clients receive 0.4.9 through the dedicated update feed.
+- Known capture retry and device-recovery work remains in the client quality plan.
+
 ## 0.1.5 - 2026-09-03
 
 ### Changed

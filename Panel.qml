@@ -120,6 +120,7 @@ Panel {
             }
             Text {
               Layout.fillWidth: true
+              textFormat: Text.PlainText
               text: root.running
                 ? "Your private room is one click away"
                 : "Voice, chat, and screen sharing"
@@ -141,6 +142,7 @@ Panel {
               color: root.stateColor
             }
             Text {
+              textFormat: Text.PlainText
               text: root.stateText
               color: root.stateColor
               font.family: root.fontFamily
@@ -159,6 +161,7 @@ Panel {
           spacing: Style.space(4)
           Text {
             width: parent.width
+            textFormat: Text.PlainText
             text: root.errorText !== ""
               ? root.errorText
               : (root.migrationRequired
@@ -253,6 +256,7 @@ Panel {
           width: parent.width
           Text {
             Layout.fillWidth: true
+            textFormat: Text.PlainText
             text: root.versionText !== ""
               ? "CLIENT " + root.versionText
               : (root.migrationRequired && root.legacyVersionText !== "" ? "LEGACY CLIENT " + root.legacyVersionText : "CLIENT VERSION UNKNOWN")
@@ -262,7 +266,7 @@ Panel {
             elide: Text.ElideRight
           }
           Text {
-            text: "PLUGIN 0.1.5"
+            text: "PLUGIN 0.1.6"
             color: root.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
