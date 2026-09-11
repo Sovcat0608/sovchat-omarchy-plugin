@@ -2,6 +2,32 @@
 
 All notable changes to the SovChat Omarchy plugin are documented here.
 
+## 0.2.0 - 2026-09-11
+
+First native migration release, published for real Omarchy testing. This is a
+source-only Quickshell/QML plugin with a Python helper and native Qt video bridge;
+the old AppImage launcher, its installer and obsolete preview are retired from
+this tree (available in Git history and tag v0.1.6).
+
+- Restores the original compact Linux styling, six themes, desktop-structured
+  login and compact room switcher with keyboard/outside-click dismissal.
+- Implements shared authentication, rooms, chat, profile/settings, LiveKit voice,
+  portal sharing, selected-app audio, native video viewing and usage controls.
+- Fixes verified sign-out/relogin and requires the Qt WebP decoder for avatars.
+- Adds native release pings, a bar badge and an in-panel update notice.
+- Requires explicit `setup.py` after installation/update; no automatic dependency
+  installation. See README for commands, prerequisites and rollback boundaries.
+- Launcher 0.1.6 and earlier need one manual update to acquire the new checker.
+
+Validation: 93 Python tests (one Linux-only skip on Windows), 16 JavaScript tests
+and 13 QML parser checks; prior Omarchy VM component and live login/chat/logout
+checks. Real two-party native media, physical microphone dropouts, Google OAuth,
+real room switching and high-resolution network performance remain unaccepted.
+Device hot-unplug currently requires rejoining. No Krisp-equivalent claim.
+
+The existing marketplace approval is for launcher 0.1.6, not this new native
+implementation. The upstream release does not imply marketplace re-verification.
+
 ## 0.1.6 - 2026-09-08
 
 ### Fixed

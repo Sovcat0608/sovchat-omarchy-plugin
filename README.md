@@ -1,137 +1,128 @@
 # SovChat for Omarchy
 
-![SovChat for Omarchy marketplace preview](preview.png)
+Version `0.2.0` — the first native migration release. Native Quickshell/QML interface, Python
+service helper, LiveKit audio and PipeWire/portal screen capture, with a small
+native Qt video surface. No Electron, AppImage or embedded browser.
 
-Voice rooms, text chat, and screen or application sharing in a dedicated
-Omarchy desktop client, controlled from a native bar widget.
+This early native release is available for real Omarchy testing. VM component
+checks and live login/chat/logout have passed; two-party native media and physical
+microphone quality remain unverified. Read the known limitations before updating.
+The prior marketplace verification does not cover this new native implementation.
 
-[Create an account](https://sovchat.com/signup) ·
-[Open the web app](https://sovchat.com/app) ·
-[Latest Omarchy client](https://github.com/Sovcat0608/sovchat-omarchy/releases/latest) ·
-[Marketplace listing](https://plugins.omarchy.org/plugin.html?id=com.sovchat.omarchy)
+## Features
 
-> [!IMPORTANT]
-> Anyone can create a SovChat account while capacity remains. Registration stops
-> automatically at the server-enforced global limit of 500 accounts; no access
-> code or separate Omarchy grant is required. The plugin cannot bypass that
-> limit.
+Original Linux compact layout and six colour themes; desktop-structured compact
+login; shared accounts/rooms; public/private chat, replies, reactions, attachments;
+profile/room-owner settings; live roster; microphone/device/processing controls;
+per-person/master volume and deafen; AFK controls; native monitor/window sharing,
+selected-application audio and expanded viewing; monthly usage details;
+plugin-release notifications.
 
-## What you get
+Open signup remains subject to the shared server's 500-account cap and email
+verification. Email/password and Google sign-in use the existing shared service.
+Google opens the system browser and a temporary nonce-checked loopback callback.
+Remember me uses Secret Service only; no plaintext token file is written.
 
-- Voice rooms with dedicated microphone and speaker controls
-- Text chat alongside the room
-- Monitor and application-window sharing through Omarchy's desktop portal
-- A native bar widget for install, status, launch, focus, and updates
-- Compact Hyprland scratchpad behavior
-- A dedicated Omarchy client and stable update channel
+Sign-out clears local/private UI and capture immediately, independently revokes
+the server session, and verifies the old token is rejected. Failed revocation has
+an explicit retry. Non-remembered sessions are also revoked on graceful helper
+exit. Offline/forced exits cannot guarantee server cleanup: use the explicit
+other-device disconnect option to recover an already stale session.
 
-## Quick start
+## Requirements and explicit setup
 
-1. Install and enable the official plugin:
+Tested on Omarchy 4.0.2 / x86_64, Python 3.14, Qt 6.11.2, GStreamer 1.28.6.
+Required host tools: Python with venv/pip, python-gobject, GStreamer base/good and
+PipeWire elements, pactl, qmake6, qt6-imageformats, make and g++. The Qt image
+formats package supplies the WebP decoder used by desktop-uploaded avatars;
+setup refuses to proceed without it. Optional secret-tool plus an
+unlocked Secret Service enables Remember me. Setup reports missing prerequisites;
+it never installs system packages or uses sudo.
 
-   ~~~bash
-   omarchy plugin add https://github.com/Sovcat0608/sovchat-omarchy-plugin.git --enable
-   ~~~
+## Install or migrate from launcher 0.1.x
 
-2. Open **SovChat** from the Omarchy bar and choose **Install client**. The
-   widget downloads the reviewed x86_64 AppImage (about 129 MB) into your
-   account's `~/.local` directory.
+New install (from the upstream repository):
 
-3. Launch SovChat, create an account or sign in, and join a room.
-   Choose the share control in the desktop client when you want to present a
-   monitor or application window.
+```sh
+omarchy plugin add https://github.com/Sovcat0608/sovchat-omarchy-plugin.git --enable
+python ~/.config/omarchy/plugins/com.sovchat.omarchy/setup.py
+omarchy-restart-shell
+```
 
-Prefer the browser for a quick look? Create an account or sign in by choosing
-**Open web app** in the widget or visiting [sovchat.com/app](https://sovchat.com/app).
+For an existing launcher install, close its voice/screen session first, then:
 
-## Requirements and limits
+```sh
+omarchy plugin update com.sovchat.omarchy
+python ~/.config/omarchy/plugins/com.sovchat.omarchy/setup.py
+omarchy-restart-shell
+```
 
-- Omarchy Quattro with third-party plugin support
-- x86_64 hardware
-- A SovChat account; open signup remains available until the server-enforced
-  500-account limit is reached
-- `bash`, Python 3, and `curl` for the user-level installer
-- PipeWire and an XDG Desktop Portal for monitor/window selection
-- Optional `fuse2` support when the AppImage runtime is not already available
+Run setup as your desktop user after installing the listed prerequisites. It
+downloads exact hash-locked Python wheels and compiles the Qt bridge locally.
+It never installs OS packages. Do not skip setup: the panel can load without the
+native media runtime, but voice/screen features will be unavailable. Existing
+AppImages, desktop shortcuts, and account data are not deleted or modified.
 
-The plugin and client run as the signed-in user. They do not request
-administrator privileges or modify system configuration.
+If you extracted the source ZIP instead, run from its plugin directory:
 
-Linux system audio is intentionally not included with a screen share. SovChat
-shares the selected monitor or application video while your configured
-microphone continues to handle voice.
+```sh
+python setup.py
+```
+
+In the full source repository use `python native-plugin/setup.py` instead.
+Setup creates a plugin-owned versioned runtime, verifies exact wheel hashes,
+builds the video surface against host Qt, and selects the runtime only after
+validation. No code downloads happen when the panel opens. An offline verified
+wheel directory can be passed with `--wheelhouse <directory>`.
+
+Reload the Omarchy shell after setup. Stop voice/sharing and sign out first unless
+you deliberately use Remember me. `python setup.py --rollback` selects the previous
+dependency runtime only; restore plugin source separately if rolling back code.
+The old runtime and build directories are retained, not deleted automatically.
+After a Qt/Python platform upgrade, rerun setup and revalidate compatibility.
+
+The plugin is an unsandboxed part of your desktop shell: another untrusted plugin
+can interfere with the shared process. The private helper boundary is not an OS
+sandbox against other software running as your user.
+
+## Known limitations
+
+Actual two-party native LiveKit and physical microphone quality acceptance is
+still pending. Portal and audio/video component QA are not a live-call result.
+Sharing supports up to 1440p with 15/30/60 FPS choices; Auto uses a 720p cap and
+pressure-based frame pacing. High-resolution and live-network performance still
+need acceptance. Application audio requires explicitly selecting a playing app;
+the native SovChat output and whole speaker mix are excluded. Source links are
+verified and source loss fails closed. Stream audio has independent volume/mute.
+Device hot-unplug currently requires rejoining. Photos are resized natively before
+upload. No Krisp-equivalent denoising claim is made.
+See the release notes for verification scope and remaining gates. Do not treat
+this release as proof of full desktop parity or microphone-dropout resolution.
 
 ## Updates
 
-Update the plugin checkout with:
+The checker reads stable releases of `Sovcat0608/sovchat-omarchy-plugin` every
+30 minutes and at startup. It shows a desktop notification (when notify-send is
+available), bar badge and panel notice. It does not execute updates automatically.
 
-~~~bash
-omarchy plugin update --yes
-~~~
+```sh
+omarchy plugin update com.sovchat.omarchy
+python ~/.config/omarchy/plugins/com.sovchat.omarchy/setup.py
+omarchy-restart-shell
+```
 
-The installed AppImage checks SovChat's Omarchy-only stable feed shortly after
-launch, hourly, and after resume or unlock. It downloads an available update in
-the background and presents **Update now** when the verified package is ready.
+Launcher 0.1.6 and earlier have no release checker: they need one manual update
+to acquire native update pings. Notification delivery requires a running plugin
+and successful GitHub access; a published release is not proof every user was
+notified. A manually copied VM build is not git-managed.
+Native ZIPs contain only source/assets/license, not the legacy desktop client,
+credentials or host-specific binaries. Build the Qt module on the target host.
 
-<details>
-<summary>Upgrading from marketplace plugin 0.1.3 or earlier</summary>
+## Removal and rollback
 
-Plugin 0.1.3 and earlier installed the standalone Linux client, which uses a
-different update channel. Plugin 0.1.4 detects only that exact legacy target
-and shows **Standalone found**.
-
-Choose **Install Omarchy edition** to install the independent client alongside
-it. The legacy AppImage is not opened, executed, changed, or removed. After the
-Omarchy edition works, you may remove the old client separately using the
-legacy commands below.
-
-The standalone Linux update feed must not be redirected to the Omarchy feed.
-
-</details>
-
-## Security
-
-The installer accepts one reviewed, immutable HTTPS artifact and verifies its
-exact byte count and SHA-512 digest before atomic publication. It refuses
-redirects, bounds download time and size, and protects destination paths from
-symlink and concurrent-replacement attacks.
-
-The plugin never reads SovChat credentials, browser storage, voice tokens, or
-sessions. See [SECURITY.md](SECURITY.md) for its permissions, installed paths,
-network boundary, and vulnerability-reporting process.
-
-## Remove
-
-Remove the Omarchy plugin:
-
-~~~bash
-omarchy plugin remove com.sovchat.omarchy --yes
-~~~
-
-The desktop client is deliberately retained. To remove it too, close SovChat
-and delete only its owned user-level targets:
-
-~~~bash
-rm -rf -- "$HOME/.local/opt/sovchat-omarchy"
-rm -f -- "$HOME/.local/share/applications/com.sovchat.omarchy.desktop"
-rm -f -- "$HOME/.local/share/icons/hicolor/scalable/apps/com.sovchat.omarchy.svg"
-~~~
-
-If you migrated from marketplace plugin 0.1.3 or earlier, the standalone client
-may remain beside the Omarchy edition. After confirming the Omarchy edition
-works, remove that legacy installation separately:
-
-~~~bash
-rm -rf -- "$HOME/.local/opt/sovchat"
-rm -f -- "$HOME/.local/share/applications/com.sovchat.desktop.desktop"
-rm -f -- "$HOME/.local/share/icons/hicolor/scalable/apps/com.sovchat.desktop.svg"
-~~~
-
-Do not run the legacy cleanup commands for a separately managed Linux client.
-
-## Learn more
-
-- [Plugin changelog](CHANGELOG.md)
-- [Desktop client source and releases](https://github.com/Sovcat0608/sovchat-omarchy)
-- [Development and release handover](https://github.com/Sovcat0608/sovchat-omarchy/blob/main/HANDOVER.md)
-- [MIT License](LICENSE)
+Sign out and leave voice/screen sharing first. Disable or remove the plugin with
+Omarchy's plugin manager. Runtime/preferences under `~/.local/share/sovchat-omarchy`
+and `~/.config/sovchat-omarchy` are retained; removal does not delete your account.
+For a code rollback, restore the prior tagged plugin source (v0.1.6 is the old
+launcher) rather than running `setup.py --rollback`, which selects dependencies
+only. The old AppImage installation is left available for that rollback.

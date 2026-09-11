@@ -1,26 +1,40 @@
-name: Security tests
+name: Native plugin checks
 
-on:
-  push:
-  pull_request:
+on: [push, pull_request]
 
 permissions:
   contents: read
 
 jobs:
-  installer:
-    name: Descriptor-safe installer
+  contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-
     steps:
-      - name: Check out reviewed snapshot
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Validate scripts
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Stage the flat plugin for shared portable tests
+        shell: bash
         run: |
-          /usr/bin/bash -n bin/sovchat-control
-          /usr/bin/python3 -m py_compile bin/sovchat-safe-install.py
-
-      - name: Run installer security tests
-        run: /usr/bin/python3 -m unittest discover -s tests -v
+          TASK_QA="$RUNNER_TEMP/sovchat-native-qa"
+          mkdir -p "$TASK_QA/native-plugin" "$TASK_QA/tests" "$TASK_QA/scripts"
+          cp -R runtime assets bridge "$TASK_QA/native-plugin/"
+          cp *.qml *.js manifest.json setup.py build_video.py "$TASK_QA/native-plugin/"
+          cp tests/test_native*.py tests/test_native*.cjs "$TASK_QA/tests/"
+          cp scripts/check-native-qml.py "$TASK_QA/scripts/"
+      - name: Test private protocol, shared API, notifications and media lifecycle
+        env:
+          SOVCHAT_NATIVE_DISABLE_KEYRING: '1'
+        run: |
+          cd "$RUNNER_TEMP/sovchat-native-qa"
+          python3 -B -m unittest discover -s tests -p 'test_native*.py' -v
+          node --test tests/test_native_draft.cjs tests/test_native_compact.cjs
+      - name: Install isolated Qt parser (not an Omarchy runtime)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/sovchat-qt-parser"
+          "$RUNNER_TEMP/sovchat-qt-parser/bin/pip" install 'PySide6-Essentials==6.10.2'
+      - name: Parse native QML
+        run: |
+          cd "$RUNNER_TEMP/sovchat-native-qa"
+          TASK_PYTHON="$RUNNER_TEMP/sovchat-qt-parser/bin/python"
+          TASK_QMLFORMAT=$("$TASK_PYTHON" -c 'from pathlib import Path; import PySide6; print(Path(PySide6.__file__).parent / "qmlformat")')
+          "$TASK_PYTHON" scripts/check-native-qml.py --qmlformat "$TASK_QMLFORMAT"
+      # Portable checks are not end-to-end Omarchy media acceptance.
