@@ -2,6 +2,13 @@
 
 All notable changes to the SovChat Omarchy plugin are documented here.
 
+## 0.2.1 - 2026-11-22
+
+- Adds the Christmas theme to Appearance, with the Windows winter scene and
+  snowflake voice button adapted to Omarchy's compact layout.
+- Adds a still-image option. The scene uses the still automatically when video
+  playback is unavailable and unloads the animation when the panel closes.
+
 ## 0.2.0 - 2026-09-11
 
 First native migration release, published for real Omarchy testing. This is a

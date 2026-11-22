@@ -1,6 +1,6 @@
 # SovChat for Omarchy
 
-Version `0.2.0` — the first native migration release. Native Quickshell/QML interface, Python
+Version `0.2.1`. Native Quickshell/QML interface, Python
 service helper, LiveKit audio and PipeWire/portal screen capture, with a small
 native Qt video surface. No Electron, AppImage or embedded browser.
 
@@ -11,12 +11,17 @@ The prior marketplace verification does not cover this new native implementation
 
 ## Features
 
-Original Linux compact layout and six colour themes; desktop-structured compact
+Original Linux compact layout and seven colour themes; desktop-structured compact
 login; shared accounts/rooms; public/private chat, replies, reactions, attachments;
 profile/room-owner settings; live roster; microphone/device/processing controls;
 per-person/master volume and deafen; AFK controls; native monitor/window sharing,
 selected-application audio and expanded viewing; monthly usage details;
 plugin-release notifications.
+
+Choose Christmas in Settings → Appearance for the winter lobby and snowflake
+voice button. Turn off Animate Christmas scene to use the still artwork. Animation
+requires Qt Multimedia with H.264 playback support. The still artwork works
+without it.
 
 Open signup remains subject to the shared server's 500-account cap and email
 verification. Email/password and Google sign-in use the existing shared service.

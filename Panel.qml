@@ -13,11 +13,10 @@ Panel {
   readonly property var service: hostWidget ? hostWidget.sovchat : null
   onOpenedChanged: if (!opened) content.clearSensitive()
 
-  function persistTheme(value) {
-    if (!Palette.valid(value)) return
+  function persistAppearance(settingName, value) {
     var entry = { id: root.moduleName }
     for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
-    entry.themeId = value
+    entry[settingName] = value
     root.settings = entry
     if (root.hostWidget) root.hostWidget.settings = entry
     if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
@@ -41,7 +40,13 @@ Panel {
       uiScale: Style.space(100) / 100
       fontFamily: Style.fontFamily
       themeId: Palette.selected(root.setting("themeId", "ember-shift")).id
-      onThemeSelected: function(value) { root.persistTheme(value) }
+      christmasMotion: root.setting("christmasMotion", true) !== false
+      panelOpen: root.opened
+      onThemeSelected: function(value) {
+        if (!Palette.valid(value)) return
+        root.persistAppearance("themeId", value)
+      }
+      onChristmasMotionSelected: function(value) { root.persistAppearance("christmasMotion", value) }
       onCloseRequested: root.close()
     }
   }

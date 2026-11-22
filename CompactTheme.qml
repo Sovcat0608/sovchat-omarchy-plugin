@@ -9,8 +9,9 @@ QtObject {
   readonly property string layoutMode: "compact"
   readonly property color background: Palette.mix(palette.bottom, "#080a0b", 0.84)
   readonly property color sunken: Palette.mix(palette.bottom, "#050607", 0.68)
-  readonly property color foreground: "#e8e8e8"
-  readonly property color muted: "#898386"
+  readonly property bool christmas: palette.id === "christmas"
+  readonly property color foreground: christmas ? "#e7f1f4" : "#e8e8e8"
+  readonly property color muted: christmas ? "#afc5ce" : "#898386"
   readonly property color accent: palette.accent
   readonly property color secondary: palette.secondary
   readonly property color raised: Palette.mix("#ffffff", String(background), 0.08)

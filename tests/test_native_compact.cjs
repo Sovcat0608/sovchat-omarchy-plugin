@@ -51,7 +51,7 @@ test("polling, startup and update checks never announce working", () => {
 });
 
 test("all six original themes exist and reference Ember Shift has exact CSS colours", () => {
-  assert.deepEqual(Array.from(palette.choices, p => p.name), ["Solar Flare", "Neon Current", "Rose Circuit", "Glacier Signal", "Ember Shift", "Night Bloom"]);
+  assert.deepEqual(Array.from(palette.choices, p => p.name), ["Solar Flare", "Neon Current", "Rose Circuit", "Glacier Signal", "Ember Shift", "Night Bloom", "Christmas"]);
   const ember = palette.selected("ember-shift");
   assert.equal(palette.mix(ember.bottom, "#080a0b", 0.84), "#201b1d");
   assert.equal(palette.mix(ember.bottom, "#050607", 0.68), "#1b1619");

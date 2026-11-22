@@ -13,6 +13,8 @@ Rectangle {
   property real uiScale: 1
   property string fontFamily: "monospace"
   property string themeId: "ember-shift"
+  property bool christmasMotion: true
+  property bool panelOpen: true
   property string page: "lobby"
   property bool showProgress: false
   property var attachedFiles: []
@@ -25,6 +27,7 @@ Rectangle {
   readonly property string layoutMode: theme.layoutMode
   readonly property var viewTheme: theme
   readonly property bool signedIn: !!service && service.session !== null
+  readonly property bool christmasLobby: theme.christmas && signedIn && page === "lobby"
   readonly property bool actionsReady: !!service && service.ready && !service.busy
   readonly property bool controlsReady: !!service && service.ready
   readonly property bool backgroundBusy: !!service && service.busy && FeedbackPolicy.background(service.pendingOp)
@@ -35,10 +38,35 @@ Rectangle {
   readonly property Item preferredFocus: !signedIn && page !== "settings" ? authView.preferredFocus : page === "chat" ? draft : root
   signal closeRequested()
   signal themeSelected(string value)
+  signal christmasMotionSelected(bool value)
   color: theme.background
   implicitWidth: theme.px(352)
   implicitHeight: theme.px(654)
   CompactTheme { id: theme; scale: root.uiScale; fontFamily: root.fontFamily; themeId: root.themeId }
+
+  Item {
+    objectName: "christmasScene"
+    anchors.fill: parent
+    visible: root.christmasLobby
+    clip: true
+
+    Image {
+      anchors.fill: parent
+      source: root.christmasLobby ? "assets/christmas-compact.png" : ""
+      fillMode: Image.PreserveAspectCrop
+      asynchronous: true
+    }
+    Loader {
+      objectName: "christmasVideoLoader"
+      anchors.fill: parent
+      active: root.christmasLobby && root.christmasMotion && root.panelOpen && root.visible
+      source: active ? "ChristmasVideo.qml" : ""
+    }
+    Rectangle {
+      anchors.fill: parent
+      color: "#66040d18"
+    }
+  }
 
   function clearSensitive() {
     authView.clearSensitive()
@@ -91,6 +119,7 @@ Rectangle {
     property bool selected: false
     property bool chrome: true
     property color ink: theme.muted
+    property bool christmasRing: false
     implicitHeight: theme.px(36)
     implicitWidth: glyph !== "" ? theme.px(36) : Math.max(theme.px(36), implicitContentWidth + theme.px(16))
     padding: theme.px(6)
@@ -102,6 +131,7 @@ Rectangle {
     ToolTip.text: hint
     ToolTip.delay: 600
     background: Rectangle {
+      radius: control.christmasRing ? width / 2 : 0
       color: control.primary ? theme.accent : control.selected ? theme.selected
         : control.hovered && control.enabled ? theme.raised : control.chrome ? theme.sunken : "transparent"
       border.width: control.chrome || control.activeFocus ? 1 : 0
@@ -113,6 +143,22 @@ Rectangle {
       implicitHeight: theme.px(20)
       NativeGlyph { anchors.centerIn: parent; width: theme.px(20); height: width; visible: control.glyph !== ""; kind: control.glyph; color: control.primary ? theme.background : control.ink }
       Text { id: caption; anchors.fill: parent; visible: control.glyph === ""; text: control.text; textFormat: Text.PlainText; font: control.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; color: control.primary ? theme.background : control.enabled ? theme.foreground : theme.muted }
+      Image {
+        objectName: "christmasVoiceRing"
+        anchors.centerIn: parent
+        width: control.width + theme.px(12)
+        height: width
+        sourceSize.width: Math.ceil(width * 1.5)
+        visible: control.christmasRing
+        source: visible ? "assets/christmas-join-ring.svg" : ""
+        NumberAnimation on rotation {
+          running: control.christmasRing && root.christmasMotion && root.panelOpen && root.visible
+          from: 0
+          to: 360
+          duration: 18000
+          loops: Animation.Infinite
+        }
+      }
     }
   }
   component Entry: TextField {
@@ -234,7 +280,7 @@ Rectangle {
 
   Rectangle {
     id: header
-    width: parent.width; height: theme.px(46); color: theme.sunken
+    width: parent.width; height: theme.px(46); color: root.christmasLobby ? "#b3040d18" : theme.sunken
     Image { anchors.left: parent.left; anchors.leftMargin: theme.px(12); anchors.verticalCenter: parent.verticalCenter; width: theme.px(22); height: width; source: "assets/ico.svg"; fillMode: Image.PreserveAspectFit }
     Copy { objectName: "operationStatus"; anchors.right: closeButton.left; anchors.rightMargin: theme.px(8); anchors.verticalCenter: parent.verticalCenter; height: theme.px(16); width: theme.px(210); horizontalAlignment: Text.AlignRight; text: root.showProgress ? FeedbackPolicy.label(root.foregroundOperation) : ""; color: theme.secondary; font.pixelSize: theme.px(10); maximumLineCount: 1 }
     Action { id: closeButton; anchors.right: parent.right; height: parent.height; width: theme.px(44); glyph: "close"; hint: "Close SovChat"; chrome: false; onClicked: root.closeRequested() }
@@ -307,10 +353,10 @@ Rectangle {
         }
         Item { Layout.fillHeight: true; Layout.preferredHeight: 0 }
         RowLayout {
-          Layout.alignment: Qt.AlignHCenter; spacing: 0
+          Layout.alignment: Qt.AlignHCenter; Layout.bottomMargin: root.christmasLobby ? theme.px(7) : 0; spacing: 0
           Action { glyph: "noise"; implicitWidth: theme.px(44); implicitHeight: theme.px(44); ink: theme.accent; hint: "Audio processing"; onClicked: { settingsView.section = "audio"; root.page = "settings" } }
           Action { glyph: "share"; implicitWidth: theme.px(44); implicitHeight: theme.px(44); selected: !!root.service && !!(root.service.media.sharing || root.service.media.screenPending); enabled: root.controlsReady && root.service.media.connected && root.service.media.screenSharingAvailable; hint: selected ? "Stop sharing / cancel selection" : "Share screen or application"; onClicked: selected ? root.service.request("screen-stop") : shareSource.open() }
-          Action { glyph: "voice"; implicitWidth: theme.px(44); implicitHeight: theme.px(44); primary: true; hint: root.service && root.service.media.connecting ? "Cancel voice connection" : root.service && root.service.media.available ? root.service.media.connected ? "Leave voice" : "Join voice muted" : "Native runtime setup is required"; enabled: (root.service && (root.service.media.connected || root.service.media.connecting) ? root.controlsReady : root.actionsReady) && !!root.service.currentRoom && root.service.media.available; onClicked: root.service.request(root.service.media.connected || root.service.media.connecting ? "voice-leave" : "voice-join") }
+          Action { glyph: "voice"; implicitWidth: theme.px(44); implicitHeight: theme.px(44); primary: true; christmasRing: root.christmasLobby; hint: root.service && root.service.media.connecting ? "Cancel voice connection" : root.service && root.service.media.available ? root.service.media.connected ? "Leave voice" : "Join voice muted" : "Native runtime setup is required"; enabled: (root.service && (root.service.media.connected || root.service.media.connecting) ? root.controlsReady : root.actionsReady) && !!root.service.currentRoom && root.service.media.available; onClicked: root.service.request(root.service.media.connected || root.service.media.connecting ? "voice-leave" : "voice-join") }
         }
         Copy { Layout.bottomMargin: theme.px(5); text: root.service ? root.service.media.videoError || root.service.media.audioError || root.service.media.shareAudioError || (root.service.media.sharingAudio ? "Sharing selected application audio" : "") : ""; visible: text !== ""; horizontalAlignment: Text.AlignHCenter; color: theme.danger; font.pixelSize: theme.px(9) }
       }
@@ -405,8 +451,10 @@ Rectangle {
       id: settingsView
       objectName: "appearanceView"
       anchors.fill: parent; visible: root.page === "settings"; paletteTheme: theme; service: root.service
+      christmasMotion: root.christmasMotion
       onBackRequested: root.page = "lobby"
       onThemeSelected: function(value) { root.themeSelected(value) }
+      onChristmasMotionSelected: function(value) { root.christmasMotionSelected(value) }
     }
     Loader {
       id: videoView; anchors.fill: parent; active: root.page === "stream" && !!root.service && !!root.service.media.videoRenderer
@@ -416,7 +464,7 @@ Rectangle {
     }
   }
   Rectangle {
-    id: dock; anchors.bottom: parent.bottom; width: parent.width; height: theme.px(64); color: theme.sunken
+    id: dock; anchors.bottom: parent.bottom; width: parent.width; height: theme.px(64); color: root.christmasLobby ? "#d9040d18" : theme.sunken
     visible: root.signedIn && root.page === "lobby"
     Rectangle { width: parent.width; height: 1; color: theme.secondary; opacity: 0.4 }
     RowLayout {

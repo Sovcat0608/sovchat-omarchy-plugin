@@ -8,9 +8,11 @@ Rectangle {
   required property var paletteTheme
   property var service: null
   property string section: "palette"
+  property bool christmasMotion: true
   readonly property var theme: paletteTheme
   signal backRequested()
   signal themeSelected(string value)
+  signal christmasMotionSelected(bool value)
   color: theme.background
   component Copy: Label {
     Layout.fillWidth: true; textFormat: Text.PlainText; wrapMode: Text.Wrap
@@ -93,6 +95,17 @@ Rectangle {
           }
         }
         Rule {}
+        CheckBox {
+          objectName: "christmasMotion"
+          visible: theme.christmas
+          text: "Animate Christmas scene"
+          checked: root.christmasMotion
+          font.family: theme.fontFamily
+          font.pixelSize: theme.px(12)
+          palette.windowText: theme.foreground
+          palette.text: theme.foreground
+          onToggled: root.christmasMotionSelected(checked)
+        }
         Copy { text: "Omarchy plugin · compact only"; color: theme.muted; font.pixelSize: theme.px(10) }
         Copy { visible: !!root.service && root.service.update.available; text: visible ? "Plugin " + root.service.update.latest + " available\nomarchy plugin update com.sovchat.omarchy\nThen rerun setup.py in the plugin folder and reload the shell. See the release notes." : ""; color: theme.accent; font.pixelSize: theme.px(10) }
         Copy { visible: text !== ""; text: root.service ? root.service.updateError || "" : ""; color: theme.muted; font.pixelSize: theme.px(10) }

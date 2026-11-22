@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "com.sovchat.omarchy",
   "name": "SovChat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "SovChat",
   "license": "MIT",
   "description": "Native compact Omarchy plugin with shared SovChat accounts, chat, voice and portal screen sharing. Explicit native setup required; see known media QA limitations.",

@@ -8,7 +8,8 @@ var choices = [
   { id: "rose-circuit", name: "Rose Circuit", accent: "#ff6fb5", secondary: "#6fe7d7", bottom: "#221a24" },
   { id: "glacier-signal", name: "Glacier Signal", accent: "#8bd5ff", secondary: "#b9f36c", bottom: "#14242c" },
   { id: "ember-shift", name: "Ember Shift", accent: "#ff795e", secondary: "#65c7ff", bottom: "#251e21" },
-  { id: "night-bloom", name: "Night Bloom", accent: "#b58cff", secondary: "#73e6b1", bottom: "#1d1b29" }
+  { id: "night-bloom", name: "Night Bloom", accent: "#b58cff", secondary: "#73e6b1", bottom: "#1d1b29" },
+  { id: "christmas", name: "Christmas", accent: "#8cf4f7", secondary: "#bdeef5", bottom: "#071426" }
 ]
 function valid(id) { return choices.some(function(p) { return p.id === id }) }
 function selected(id) { return choices.filter(function(p) { return p.id === id })[0] || choices[4] }
